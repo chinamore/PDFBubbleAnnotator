@@ -1,0 +1,38 @@
+name: Build Windows EXE
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: windows-2022
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+      - name: Restore NuGet packages
+        shell: pwsh
+        run: msbuild .\PDFBubbleAnnotator.vcxproj /t:Restore /p:Configuration=Release /p:Platform=x64
+      - name: Build Release x64
+        shell: pwsh
+        run: msbuild .\PDFBubbleAnnotator.vcxproj /m /t:Build /p:Configuration=Release /p:Platform=x64 /p:WindowsTargetPlatformVersion=10.0
+      - name: Prepare package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path .\release | Out-Null
+          Copy-Item .\x64\Release\PDFBubbleAnnotator.exe .\release\PDFBubbleAnnotator.exe
+          Copy-Item .\web .\release\web -Recurse
+          Copy-Item .\app.ico .\release\app.ico
+          @'
+          PDF 图纸气泡序号标注工具
+          运行要求：Windows 10/11 x64 + Microsoft Edge WebView2 Runtime。
+          '@ | Set-Content .\release\运行说明.txt -Encoding UTF8
+      - name: Upload EXE artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PDFBubbleAnnotator-Windows-x64
+          path: release/
+          if-no-files-found: error
