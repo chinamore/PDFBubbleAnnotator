@@ -2,6 +2,7 @@ name: Public Windows Release
 on:
   push:
     branches: [ main ]
+  workflow_dispatch:
 permissions:
   contents: write
 jobs:
@@ -10,21 +11,36 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: microsoft/setup-msbuild@v2
-      - shell: pwsh
+      - name: Restore NuGet packages
+        shell: pwsh
+        run: msbuild .\PDFBubbleAnnotator.vcxproj /t:Restore /p:Configuration=Release /p:Platform=x64
+      - name: Build Release x64
+        shell: pwsh
         run: msbuild .\PDFBubbleAnnotator.vcxproj /m /t:Build /p:Configuration=Release /p:Platform=x64 /p:WindowsTargetPlatformVersion=10.0
-      - shell: pwsh
+      - name: Package release
+        shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path .\release | Out-Null
           Copy-Item .\x64\Release\PDFBubbleAnnotator.exe .\release\PDFBubbleAnnotator.exe
+          if (Test-Path .\x64\Release\WebView2Loader.dll) { Copy-Item .\x64\Release\WebView2Loader.dll .\release\WebView2Loader.dll }
           Copy-Item .\web .\release\web -Recurse
           Copy-Item .\app.ico .\release\app.ico
-          Compress-Archive -Path .\release\* -DestinationPath .\release\PDFBubbleAnnotator-Windows-x64.zip -Force
+          @'
+PDF Bubble Annotator
+Windows x64
+
+Run PDFBubbleAnnotator.exe.
+Microsoft Edge WebView2 Runtime is required.
+'@ | Set-Content .\release\运行说明.txt -Encoding UTF8
+          Compress-Archive -Path .\release\PDFBubbleAnnotator.exe, .\release\WebView2Loader.dll, .\release\web, .\release\app.ico, .\release\运行说明.txt -DestinationPath .\release\PDFBubbleAnnotator-Windows-x64.zip -Force
       - uses: actions/upload-artifact@v4
         with:
           name: PDFBubbleAnnotator-Windows-x64
-          path: release/
-      - name: Publish release
+          path: release/PDFBubbleAnnotator-Windows-x64.zip
+      - name: Publish latest release
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release create v0.1.${{ github.run_number }} .\release\PDFBubbleAnnotator-Windows-x64.zip --repo $env:GITHUB_REPOSITORY --title "PDF Bubble Annotator v0.1.${{ github.run_number }}" --generate-notes --latest
+        run: |
+          $tag = "v0.1.${{ github.run_number }}"
+          gh release create $tag .\release\PDFBubbleAnnotator-Windows-x64.zip --repo $env:GITHUB_REPOSITORY --title "PDF Bubble Annotator $tag" --generate-notes --latest
