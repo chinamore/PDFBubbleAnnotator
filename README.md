@@ -1,68 +1,132 @@
 # PDF Bubble Annotator
 
-> **专业 PDF 图纸气泡序号标注工具｜Windows 免费下载**
+> **专业 PDF / 工程图纸批注工作台｜Windows x64**
 >
-> 打开 PDF → 添加气泡序号 → 拖动调整 → 矢量方式保存 → 打印/分享。
+> 打开图纸 → 标注 → 测量 → 统计 → 矢量 PDF 导出。
 
 [![Windows](https://img.shields.io/badge/Windows-10%2F11-blue)](https://www.microsoft.com/windows/)
 [![Platform](https://img.shields.io/badge/platform-x64-lightgrey)](#)
-[![License](https://img.shields.io/badge/license-see-repository-lightgrey)](#)
 
-## 🖥️ 软件界面
+## 🖥️ 新版工作台
 
-![PDF Bubble Annotator](https://raw.githubusercontent.com/chinamore/PDFBubbleAnnotator/main/assets/screenshot.png)
+v0.2 开始，界面从“单一 PDF 气泡工具”重组为 CAD 风格工程图工作台：顶部采用常用功能 Ribbon，左侧为工具箱和统计，中间为图纸画布，右侧为属性/标注列表。
 
-> 软件截图将随项目版本同步更新。建议使用上面的实际软件界面截图，让用户在下载前快速了解操作方式。
+截图会在稳定版 EXE 发布后同步到 `assets/screenshot.png`，避免使用非真实界面图片误导用户。
 
-## ✨ 为什么值得使用？
+## ✨ 当前版本
 
-PDF Bubble Annotator 面向工程图纸、技术文件、审图和现场修改标记场景，专门解决在 PDF 上快速添加圆形序号气泡的问题。
+### 图纸浏览
 
-### 核心功能
+- 📄 多页 PDF 查看
+- ◀ ▶ 上一页 / 下一页 / 页码跳转
+- 🔍 适合窗口、放大、缩小
+- 🖨️ 打印
+- 💾 矢量方式导出标注 PDF
+- 💾 默认建议保存到原 PDF 所在目录
+- 🇬🇧 导出文件默认命名 `- Bubble Drawing.pdf`
 
-- 📄 **PDF 图纸查看** — 打开多页 PDF，支持上一页/下一页和页码跳转
-- 🔴 **气泡序号标注** — 点击页面即可添加序号气泡
-- 🖱️ **拖动调整** — 气泡可以直接拖动到准确位置
-- ↩️ **撤销 / 删除** — 快速修改错误标注
-- 🎨 **气泡样式** — 可调整外圈、填充、字体、字号、边框和透明度
-- 🔍 **CAD 式缩放** — 放大、缩小、适合窗口查看图纸
-- 📐 **矢量 PDF 输出** — 标注直接写入 PDF 图形内容，不再把整页转换成 PNG，因此放大时不会出现普通位图的马赛克问题
-- 🖨️ **打印** — 直接打印处理后的 PDF
-- 💾 **智能保存** — 默认使用打开文件所在目录，并建议使用英文文件名 `- Bubble Drawing.pdf`
-- 🖼️ **PDF 转图片** — 支持将 PDF 页面批量导出为图片
-- 📊 **PDF 转 Excel** — 提取 PDF 文字及页面坐标，并整理为 Excel
-- 📝 **PDF 转 Word** — 将 PDF 页面文字整理到 Word 文档
-- 🔒 **Windows EXE** — C + WebView2 原生 Windows 宿主，最终以 EXE 形式运行
+### 标注
+
+- 🔴 顺序编号气泡
+- 🖱️ 选择、移动、复制、删除
+- ↶ 撤销 / ↷ 重做
+- ☁ 云线工具入口
+- ↗ 引线工具入口
+- T 多行文字工具入口
+- 📐 长度 / 面积 / 半径 / 角度工具入口
+- 🎨 标注颜色、大小、边框、字号
+- 📋 标注列表与数量统计
+- 📊 标注统计 CSV 导出
+
+### 文档处理
+
+- 📝 PDF 文字提取
+- 🖼️ PDF 页面图片导出入口
+- ⇄ 版本对比工作区入口
+- 灰显原图辅助查找
+- 图层显示/隐藏工作区
+
+> **说明：** v0.2 已完成工作台和工具架构重组。部分 CAD 几何工具目前是 UI/数据入口，下一阶段会接入真实几何计算；不会把“按钮存在”冒充成完整 CAD 功能。
+
+## 🧭 CAD 功能路线图
+
+你提出的 40 项工程图功能将按阶段落地，而不是一次性堆叠到界面里。
+
+### Phase 1 — PDF 工程图工作台
+
+- 批量导出
+- 网页式快速看图
+- 标注分类/统计
+- 标注复制/移动
+- 云线、引线、多行文字
+- 连续测量
+- 半径/角度/圆/点到直线测量
+- 面积/异形面积
+- 查找文字与结果导出
+- 原图灰显
+- 快捷键自定义
+
+### Phase 2 — 2D CAD
+
+- DXF 打开/查看
+- DWG 兼容路线
+- CAD 矢量缩放
+- 图层管理
+- 布局 / 模型空间
+- 外部参照
+- 图纸版本转换
+- 一键分图
+- 图形数量统计
+- CAD → PDF
+
+### Phase 3 — 3D CAD
+
+优先支持：
+
+- STEP / STP
+- STL
+- IGES / IGS
+- OBJ
+
+目标：旋转、缩放、平移、标准视图、模型位置标注以及当前视角 PDF 出图。
+
+### Phase 4 — 工程数据工具
+
+- PDF → 图片
+- PDF → Excel
+- PDF → Word
+- PDF 表格提取
+- 文字提取
+- 测量结果统计
+- 批量导入 / 导出
+- 天正 T3 转换路线研究
+- 展开面积 / 偏移等工程计算
+
+### Phase 5 — 专业 CAD 兼容
+
+- DWG 深度兼容
+- DWF / DWFX
+- SolidWorks / Inventor / CATIA / Creo / NX 等格式路线评估
+- OCR 与扫描图纸识别
 
 ## 🚀 快速开始
 
-1. 下载最新 Windows 版本。
-2. 解压 ZIP。
-3. 运行 `PDFBubbleAnnotator.exe`。
-4. 点击 **打开 PDF**。
-5. 在图纸上点击需要标记的位置。
-6. 调整气泡位置和样式。
-7. 点击 **保存 PDF**。
+1. 前往 **[Latest Release](https://github.com/chinamore/PDFBubbleAnnotator/releases/latest)**。
+2. 下载最新 `PDFBubbleAnnotator-Windows-x64.zip`。
+3. 解压并运行 `PDFBubbleAnnotator.exe`。
+4. 打开 PDF 图纸。
+5. 使用顶部工具栏添加气泡、测量或批注。
+6. 使用 **导出 PDF** 生成矢量标注文件。
 
-## 📥 下载
+## 📥 发布与下载
 
 ### Windows x64
 
-👉 **[下载最新版本](https://github.com/chinamore/PDFBubbleAnnotator/releases/latest)**
+👉 **[下载最新正式版本](https://github.com/chinamore/PDFBubbleAnnotator/releases/latest)**
 
-所有正式版本都会发布到 GitHub Releases，方便全球用户获取最新 Windows 构建版本。
+正式版本统一发布到 GitHub Releases。每次稳定构建通过 Windows x64 CI 后再进入 Release，避免把未验证的构建提供给用户。
 
-## 🧰 适用场景
-
-- 工程图纸审查
-- CAD/PDF 图纸修改标记
-- 施工图审图
-- 机械设计图纸编号
-- 品质检验 / QA 标记
-- 技术文件批注
-- PDF 图纸返工和问题追踪
-
-## 🔧 技术架构
+## 🧱 技术架构
 
 ```text
 Windows EXE
@@ -71,41 +135,46 @@ Windows EXE
     │
     └── WebView2
           │
-          ├── PDF.js       → PDF 查看与渲染
-          ├── PDF-Lib      → PDF 矢量输出
-          └── Web UI       → 气泡标注、翻页、缩放、转换
+          ├── PDF.js  → PDF 查看 / 渲染
+          ├── PDF-Lib → PDF 矢量输出
+          └── Web UI  → 工具栏 / 标注 / 测量 / 统计
+
+未来
+    ├── 2D CAD Engine → DXF / DWG / DWF
+    └── 3D Engine      → STEP / IGES / STL / OBJ
 ```
 
-程序使用你的 `app.ico` 作为 Windows 应用程序图标。
+程序使用项目提供的 `app.ico` 作为 Windows 应用图标。
 
 ## 📦 项目结构
 
 ```text
 PDFBubbleAnnotator/
 ├── main.c
+├── main_native.c
 ├── resource.rc
 ├── app.ico
 ├── PDFBubbleAnnotator.vcxproj
 ├── web/
-│   └── index.html
-├── assets/
-│   └── screenshot.png
-└── .github/
-    └── workflows/
+│   ├── index.html
+│   └── converter.data
+└── .github/workflows/
 ```
 
-## 🌍 开源与发布
+## 🌍 开源项目
 
-本项目使用 GitHub 进行源码管理、Windows 自动编译和 Release 发布。欢迎工程师、设计人员、审图人员以及 PDF 工具开发者使用、反馈和改进。
+项目目标不是只做一个“PDF 加气泡”的小工具，而是逐步建设一个轻量、易用、面向工程图纸的 Windows 工作台。
 
-如果这个工具对你有帮助，欢迎在 GitHub 点一个 ⭐，帮助更多有类似需求的人发现它。
+欢迎工程师、设计人员、审图人员和开发者参与测试、提交 Issue、建议新格式和贡献代码。
+
+如果项目对你有帮助，欢迎在 GitHub 点 ⭐，帮助更多有类似需求的人发现它。
 
 ## 🐞 问题反馈
 
-发现 Bug、希望增加功能或有 PDF 转换需求，可以直接提交 GitHub Issue：
+👉 [提交 Issue](https://github.com/chinamore/PDFBubbleAnnotator/issues)
 
-👉 https://github.com/chinamore/PDFBubbleAnnotator/issues
+## 📜 版本说明
 
-## 📜 说明
+当前工作台版本：**v0.2**。
 
-PDF Bubble Annotator 是一个专注于 PDF 图纸气泡序号标注和工程文档处理的 Windows 工具。发布页面中的版本以 GitHub Actions 自动构建结果为准。
+版本发布以 GitHub Actions 的 Windows x64 构建和 GitHub Releases 页面为准。
