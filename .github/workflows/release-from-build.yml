@@ -2,30 +2,43 @@ name: Publish Latest Windows Build
 on:
   push:
     branches: [ main ]
+  workflow_dispatch:
 permissions:
   contents: write
 jobs:
   release:
-    runs-on: ubuntu-latest
+    runs-on: windows-2022
     steps:
       - uses: actions/checkout@v4
-      - name: Wait for successful Windows build
+      - uses: microsoft/setup-msbuild@v2
+      - name: Restore NuGet packages
+        run: msbuild .\PDFBubbleAnnotator.vcxproj /t:Restore /p:Configuration=Release /p:Platform=x64
+      - name: Build Release x64
+        run: msbuild .\PDFBubbleAnnotator.vcxproj /m /t:Build /p:Configuration=Release /p:Platform=x64 /p:WindowsTargetPlatformVersion=10.0
+      - name: Package Windows release
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force release | Out-Null
+          Copy-Item .\x64\Release\PDFBubbleAnnotator.exe release\PDFBubbleAnnotator.exe
+          if (Test-Path .\x64\Release\WebView2Loader.dll) { Copy-Item .\x64\Release\WebView2Loader.dll release\WebView2Loader.dll }
+          Copy-Item .\web release\web -Recurse
+          Copy-Item .\app.ico release\app.ico
+          @'
+PDF Bubble Annotator
+Windows x64
+
+Run PDFBubbleAnnotator.exe.
+Microsoft Edge WebView2 Runtime is required.
+'@ | Set-Content release\运行说明.txt -Encoding UTF8
+          Compress-Archive -Path release\PDFBubbleAnnotator.exe,release\WebView2Loader.dll,release\web,release\app.ico,release\运行说明.txt -DestinationPath PDFBubbleAnnotator-Windows-x64.zip -Force
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PDFBubbleAnnotator-Windows-x64-release
+          path: PDFBubbleAnnotator-Windows-x64.zip
+      - name: Publish latest release
+        shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          for i in $(seq 1 30); do
-            run=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow build-windows.yml --branch main --limit 5 --json databaseId,headSha,status,conclusion --jq '.[] | select(.headSha == "'"$GITHUB_SHA"'") | select(.status == "completed" and .conclusion == "success") | .databaseId' | head -n 1)
-            if [ -n "$run" ]; then echo "RUN_ID=$run" >> "$GITHUB_ENV"; break; fi
-            sleep 10
-          done
-          test -n "${RUN_ID:-}" || exit 1
-      - name: Download Windows artifact
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" -n PDFBubbleAnnotator-Windows-x64 -D release
-      - name: Create release archive
-        run: cd release && zip -r ../PDFBubbleAnnotator-Windows-x64.zip .
-      - name: Publish release page
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release create "v0.1.${{ github.run_number }}" PDFBubbleAnnotator-Windows-x64.zip --repo "$GITHUB_REPOSITORY" --title "PDF Bubble Annotator v0.1.${{ github.run_number }}" --generate-notes --latest
+          $tag = "v0.2.${{ github.run_number }}"
+          gh release create $tag .\PDFBubbleAnnotator-Windows-x64.zip --repo $env:GITHUB_REPOSITORY --title "PDF Bubble Annotator $tag" --generate-notes --latest
