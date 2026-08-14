@@ -1,10 +1,12 @@
+import base64
 import os
 import sys
 from pathlib import Path
 
-from PyQt6.QtCore import QUrl
+from PyQt6.QtCore import QObject, QUrl, pyqtSlot
 from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import QApplication, QFileDialog, QInputDialog, QLineEdit, QMessageBox, QMainWindow
+from PyQt6.QtWebChannel import QWebChannel
 from PyQt6.QtWebEngineCore import QWebEnginePage, QWebEngineProfile, QWebEngineSettings
 from PyQt6.QtWebEngineWidgets import QWebEngineView
 
@@ -26,6 +28,26 @@ def verify_password() -> bool:
     return False
 
 
+class NativeBridge(QObject):
+    def __init__(self, window):
+        super().__init__()
+        self.window = window
+
+    @pyqtSlot()
+    def selectPdfFile(self):
+        start = self.window.current_dir or str(Path.home())
+        path, _ = QFileDialog.getOpenFileName(self.window, "选择 PDF 图纸文件", start, "PDF Files (*.pdf)")
+        if not path:
+            return
+        self.window.current_file_path = path
+        self.window.current_dir = str(Path(path).parent)
+        with open(path, "rb") as f:
+            encoded = base64.b64encode(f.read()).decode("ascii")
+        name = Path(path).name.replace("\\", "\\\\").replace("'", "\\'")
+        js = f"window.onNativePdfLoaded('{encoded}','{name}');"
+        self.window.page.runJavaScript(js)
+
+
 class PDFBalloonApp(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
@@ -38,7 +60,7 @@ class PDFBalloonApp(QMainWindow):
         if os.path.exists(icon):
             self.setWindowIcon(QIcon(icon))
 
-        # 每次启动使用临时 profile，清除旧缓存/访问记录，避免旧网页残留。
+        # 每次启动使用临时 profile，彻底避免旧缓存/LocalStorage 导致残留界面。
         self.profile = QWebEngineProfile(self)
         self.profile.setHttpCacheType(QWebEngineProfile.HttpCacheType.NoCache)
         self.profile.setPersistentCookiesPolicy(QWebEngineProfile.PersistentCookiesPolicy.NoPersistentCookies)
@@ -52,7 +74,11 @@ class PDFBalloonApp(QMainWindow):
         settings.setAttribute(QWebEngineSettings.WebAttribute.LocalContentCanAccessFileUrls, True)
         settings.setAttribute(QWebEngineSettings.WebAttribute.LocalContentCanAccessRemoteUrls, False)
         settings.setAttribute(QWebEngineSettings.WebAttribute.LocalStorageEnabled, False)
-        settings.setAttribute(QWebEngineSettings.WebAttribute.FullScreenSupportEnabled, True)
+
+        self.channel = QWebChannel(self.page)
+        self.bridge = NativeBridge(self)
+        self.channel.registerObject("nativeBridge", self.bridge)
+        self.page.setWebChannel(self.channel)
         self.profile.downloadRequested.connect(self._on_download_requested)
 
         index = Path(resource_path("web/index.html")).resolve()
@@ -63,13 +89,11 @@ class PDFBalloonApp(QMainWindow):
         self.setCentralWidget(self.browser)
 
     def _on_download_requested(self, download) -> None:
-        """导出文件默认保存到当前打开 PDF 的同一文件夹；取消则不创建文件。"""
+        """所有 PDF/PNG/CSV 导出默认保存到当前打开 PDF 的同一文件夹。"""
         suggested = os.path.basename(download.suggestedFileName() or "export.bin")
         save_dir = self.current_dir if self.current_dir and os.path.isdir(self.current_dir) else str(Path.home() / "Downloads")
         if not os.path.isdir(save_dir):
             save_dir = str(Path.home())
-
-        # 同名文件自动编号，避免覆盖原文件。
         target = Path(save_dir) / suggested
         if target.exists():
             stem, suffix = target.stem, target.suffix
@@ -80,7 +104,6 @@ class PDFBalloonApp(QMainWindow):
                     target = candidate
                     break
                 n += 1
-
         download.setDownloadDirectory(str(target.parent))
         download.setDownloadFileName(target.name)
         download.accept()
