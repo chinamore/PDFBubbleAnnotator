@@ -1,1 +1,1 @@
-Trigger Windows build for verified PDF/PNG export and native printing fix - 2026-08-14.
+Trigger Windows build and publish: refreshed UI, optimal fit, four-character quick functions, bubble core colors/sizes, same-folder PDF/PNG exports, cache reset, offline single EXE - 2026-08-15.
