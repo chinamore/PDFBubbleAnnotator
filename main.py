@@ -9,7 +9,7 @@ from PyQt6.QtWebEngineCore import QWebEnginePage, QWebEngineProfile, QWebEngineS
 from PyQt6.QtWebEngineWidgets import QWebEngineView
 
 APP_PASSWORD = "www.175.es"
-APP_NAME = "PDF 图纸气泡序号标注工具"
+APP_NAME = "PDF for Hu-Nan Zhu -Power By www.175.es"
 
 
 def resource_path(relative: str) -> str:
@@ -38,7 +38,7 @@ def verify_password() -> bool:
 class PDFBalloonApp(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
-        self.setWindowTitle(f"{APP_NAME} - Offline Edition")
+        self.setWindowTitle(APP_NAME)
         self.resize(1400, 900)
 
         icon = resource_path("app.ico")
@@ -46,7 +46,6 @@ class PDFBalloonApp(QMainWindow):
             self.setWindowIcon(QIcon(icon))
 
         # 独立、临时 WebEngine Profile：不复用旧缓存、LocalStorage 或历史记录。
-        # 这样每次启动都会从打包后的 web/index.html 重新加载，避免旧版本 UI 残留。
         self.profile = QWebEngineProfile(self)
         self.profile.setHttpCacheType(QWebEngineProfile.HttpCacheType.NoCache)
         self.profile.setPersistentCookiesPolicy(
@@ -73,10 +72,9 @@ class PDFBalloonApp(QMainWindow):
             QWebEngineSettings.WebAttribute.FullScreenSupportEnabled, True
         )
 
-        # 页面内的下载（PDF/PNG）仍交给 WebEngine 的下载处理器，
-        # HTML 自己负责默认文件名和格式。
         self.profile.downloadRequested.connect(self._on_download_requested)
         self.page.printRequested.connect(self._print_page)
+        self.page.loadFinished.connect(self._apply_branding)
 
         index = Path(resource_path("web/index.html")).resolve()
         if not index.exists():
@@ -86,14 +84,19 @@ class PDFBalloonApp(QMainWindow):
         self.browser.setUrl(QUrl.fromLocalFile(str(index)))
         self.setCentralWidget(self.browser)
 
+    def _apply_branding(self, ok: bool) -> None:
+        if not ok:
+            return
+        # 强制把网页标题、顶部品牌以及 Web 页面标题统一为正式名称，
+        # 防止旧版 HTML 中残留的 PDF Bubble Annotator 文案再次显示。
+        name = APP_NAME.replace("\\", "\\\\").replace("'", "\\'")
+        js = f"document.title='{name}'; var b=document.querySelector('.brand'); if(b) b.textContent='{name}';"
+        self.page.runJavaScript(js)
+
     def _on_download_requested(self, download) -> None:
-        # 接受网页产生的下载请求；WebEngine 会使用临时文件目录，
-        # 不需要额外的本地 HTTP 服务。
         download.accept()
 
     def _print_page(self) -> None:
-        # 页面内已有打印窗口/浏览器打印流程；这里保留原生 printRequested 钩子，
-        # 不强制覆盖用户的打印设置。
         return
 
 
