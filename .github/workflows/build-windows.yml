@@ -17,11 +17,20 @@ jobs:
       - name: Package
         shell: pwsh
         run: |
+          Remove-Item release -Recurse -Force -ErrorAction SilentlyContinue
           New-Item -ItemType Directory -Force release | Out-Null
           Copy-Item x64\Release\PDFBubbleAnnotator.exe release\PDFBubbleAnnotator.exe
           if (Test-Path x64\Release\WebView2Loader.dll) { Copy-Item x64\Release\WebView2Loader.dll release\WebView2Loader.dll }
           Copy-Item web release\web -Recurse
+          Remove-Item release\web\test.txt -Force -ErrorAction SilentlyContinue
           Copy-Item app.ico release\app.ico
+          @'
+PDF Bubble Annotator v0.3
+Windows x64
+
+Run PDFBubbleAnnotator.exe.
+Microsoft Edge WebView2 Runtime is required.
+'@ | Set-Content release\运行说明.txt -Encoding UTF8
           Compress-Archive -Path release\* -DestinationPath PDFBubbleAnnotator-v0.3-Windows-x64.zip -Force
       - uses: actions/upload-artifact@v4
         with:
