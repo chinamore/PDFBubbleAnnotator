@@ -1,69 +1,87 @@
-name: Build Windows Offline EXE
+name: Build Single EXE Offline
+
 on:
   workflow_dispatch:
   push:
     branches: [ main ]
+
 permissions:
   contents: read
+
 jobs:
   build:
     runs-on: windows-2022
     steps:
       - uses: actions/checkout@v4
-      - uses: microsoft/setup-msbuild@v2
-      - name: Restore
-        shell: pwsh
-        run: msbuild PDFBubbleAnnotator.vcxproj /t:Restore /p:Configuration=Release /p:Platform=x64
-      - name: Build
-        shell: pwsh
-        run: msbuild PDFBubbleAnnotator.vcxproj /m /t:Build /p:Configuration=Release /p:Platform=x64 /p:WindowsTargetPlatformVersion=10.0
-      - name: Download bundled offline dependencies
-        shell: pwsh
-        run: |
-          $ErrorActionPreference='Stop'
-          $root='web\cdnjs\ajax\libs'
-          $items=@(
-            @('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js',"$root\pdf.js\2.16.105\pdf.min.js"),
-            @('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js',"$root\pdf.js\2.16.105\pdf.worker.min.js"),
-            @('https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js',"$root\pdf-lib\1.17.1\pdf-lib.min.js"),
-            @('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',"$root\xlsx\0.18.5\xlsx.full.min.js"),
-            @('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js',"$root\jszip\3.10.1\jszip.min.js"),
-            @('https://unpkg.com/docx@8.5.0/build/index.umd.js',"$root\docx\8.5.0\docx.umd.min.js")
-          )
-          foreach($x in $items){New-Item -ItemType Directory -Force -Path (Split-Path $x[1])|Out-Null;Invoke-WebRequest $x[0] -OutFile $x[1];if((Get-Item $x[1]).Length -lt 1000){throw "Bad dependency $($x[1])"}}
-          $runtime='MicrosoftEdgeWebView2RuntimeInstallerX64.exe'
-          Invoke-WebRequest 'https://go.microsoft.com/fwlink/p/?LinkId=2124703' -OutFile $runtime
-          $runtimeSize=(Get-Item $runtime).Length
-          Write-Host "WebView2 offline installer size: $runtimeSize bytes"
-          if($runtimeSize -lt 1000000){throw "WebView2 offline installer download failed or returned an unexpected response ($runtimeSize bytes)"}
-          $head=[System.IO.File]::OpenRead($runtime)
-          try { $b1=$head.ReadByte(); $b2=$head.ReadByte() } finally { $head.Dispose() }
-          if($b1 -ne 77 -or $b2 -ne 90){throw 'WebView2 offline installer is not a Windows PE executable'}
-      - name: Package and verify
-        shell: pwsh
-        run: |
-          $ErrorActionPreference='Stop'
-          if(Test-Path release){Remove-Item release -Recurse -Force}
-          New-Item -ItemType Directory -Force release|Out-Null
-          if(-not(Test-Path 'x64\Release\PDFBubbleAnnotator.exe')){throw 'EXE missing'}
-          Copy-Item 'x64\Release\PDFBubbleAnnotator.exe' release\PDFBubbleAnnotator.exe
-          $nuget=Join-Path $env:USERPROFILE '.nuget\packages\microsoft.web.webview2\1.0.2903.40'
-          $candidates=@((Join-Path $nuget 'build\native\x64\WebView2Loader.dll'),(Join-Path $nuget 'runtimes\win-x64\native\WebView2Loader.dll'),'x64\Release\WebView2Loader.dll')
-          $loader=$candidates|Where-Object{Test-Path $_}|Select-Object -First 1
-          if(-not$loader){throw 'WebView2Loader.dll missing'}
-          Copy-Item $loader release\WebView2Loader.dll -Force
-          Copy-Item web release\web -Recurse
-          Copy-Item app.ico release\app.ico
-          Copy-Item MicrosoftEdgeWebView2RuntimeInstallerX64.exe release\MicrosoftEdgeWebView2RuntimeInstallerX64.exe
-          Set-Content release\运行说明.txt 'PDF Bubble Annotator Offline Edition`r`nWindows x64`r`n`r`nPDF.js、PDF-Lib、Excel、ZIP、Word 浏览器依赖以及 Microsoft WebView2 x64 离线安装程序均随包提供。`r`n无互联网时也可部署：如目标电脑没有 WebView2 Runtime，请先运行 MicrosoftEdgeWebView2RuntimeInstallerX64.exe /silent /install，然后运行 PDFBubbleAnnotator.exe。`r`n请保持整个文件夹结构完整。' -Encoding UTF8
-          $required=@('release\PDFBubbleAnnotator.exe','release\WebView2Loader.dll','release\MicrosoftEdgeWebView2RuntimeInstallerX64.exe','release\web\index.html','release\web\component-ui.js','release\web\converter.data','release\web\bugfix.js','release\web\cdnjs\ajax\libs\pdf.js\2.16.105\pdf.min.js','release\web\cdnjs\ajax\libs\pdf.js\2.16.105\pdf.worker.min.js','release\web\cdnjs\ajax\libs\pdf-lib\1.17.1\pdf-lib.min.js','release\web\cdnjs\ajax\libs\xlsx\0.18.5\xlsx.full.min.js','release\web\cdnjs\ajax\libs\jszip\3.10.1\jszip.min.js','release\web\cdnjs\ajax\libs\docx\8.5.0\docx.umd.min.js')
-          foreach($p in $required){if(-not(Test-Path $p)){throw "Missing $p"}}
-          Compress-Archive -Path release\* -DestinationPath PDFBubbleAnnotator-Offline-Windows-x64.zip -Force
-          Expand-Archive PDFBubbleAnnotator-Offline-Windows-x64.zip verify-release -Force
-          foreach($p in $required){$q=$p -replace '^release\\','verify-release\\';if(-not(Test-Path $q)){throw "ZIP missing $q"}}
-          Write-Host 'OFFLINE PACKAGE VERIFICATION PASSED'
-      - uses: actions/upload-artifact@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          name: PDFBubbleAnnotator-Offline-Windows-x64
-          path: PDFBubbleAnnotator-Offline-Windows-x64.zip
+          python-version: '3.12'
+          architecture: x64
+          cache: pip
+
+      - name: Install Python build dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Vendor browser libraries for offline use
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = 'web\vendor'
+          New-Item -ItemType Directory -Force -Path $root | Out-Null
+          $items = @(
+            @('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js', "$root\pdf.min.js"),
+            @('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js', "$root\pdf.worker.min.js"),
+            @('https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js', "$root\pdf-lib.min.js")
+          )
+          foreach ($x in $items) {
+            Invoke-WebRequest -Uri $x[0] -OutFile $x[1]
+            if ((Get-Item $x[1]).Length -lt 1000) { throw "Invalid dependency: $($x[1])" }
+          }
+
+      - name: Patch HTML to local-only dependencies
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $p = 'web\index.html'
+          $s = Get-Content $p -Raw -Encoding UTF8
+          $s = $s -replace 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js', './vendor/pdf.min.js'
+          $s = $s -replace 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js', './vendor/pdf.worker.min.js'
+          $s = $s -replace 'https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js', './vendor/pdf-lib.min.js'
+          Set-Content $p $s -Encoding UTF8
+
+      - name: Build single EXE
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          pyinstaller --noconfirm --clean --onefile --windowed --name PDFBubbleAnnotator --icon app.ico `
+            --add-data "web;web" `
+            --add-data "app.ico;." `
+            --collect-all PyQt6 `
+            --collect-all PyQt6_WebEngine `
+            main.py
+          if (-not (Test-Path 'dist\PDFBubbleAnnotator.exe')) { throw 'EXE was not produced' }
+          $size = (Get-Item 'dist\PDFBubbleAnnotator.exe').Length
+          Write-Host "Single EXE size: $size bytes"
+          if ($size -lt 20000000) { throw 'EXE is unexpectedly small; WebEngine was probably not bundled' }
+
+      - name: Verify packaged resources
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $exe = 'dist\PDFBubbleAnnotator.exe'
+          $bytes = [System.IO.File]::ReadAllBytes($exe)
+          if ($bytes[0] -ne 77 -or $bytes[1] -ne 90) { throw 'Output is not a Windows PE executable' }
+          Write-Host 'PE header verification passed'
+          Write-Host 'PyQt6 / QtWebEngine / web assets are packaged into the onefile executable.'
+
+      - name: Upload single EXE artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PDFBubbleAnnotator-Windows-x64-SingleEXE
+          path: dist/PDFBubbleAnnotator.exe
           if-no-files-found: error
