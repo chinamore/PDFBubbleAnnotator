@@ -1,10 +1,11 @@
 import base64
 import os
 import sys
+import tempfile
 from pathlib import Path
 
 from PyQt6.QtCore import QObject, QUrl, pyqtSlot
-from PyQt6.QtGui import QIcon
+from PyQt6.QtGui import QDesktopServices, QIcon
 from PyQt6.QtWidgets import QApplication, QFileDialog, QInputDialog, QLineEdit, QMessageBox, QMainWindow
 from PyQt6.QtWebChannel import QWebChannel
 from PyQt6.QtWebEngineCore import QWebEnginePage, QWebEngineProfile, QWebEngineSettings
@@ -44,8 +45,40 @@ class NativeBridge(QObject):
         with open(path, "rb") as f:
             encoded = base64.b64encode(f.read()).decode("ascii")
         name = Path(path).name.replace("\\", "\\\\").replace("'", "\\'")
-        js = f"window.onNativePdfLoaded('{encoded}','{name}');"
-        self.window.page.runJavaScript(js)
+        self.window.page.runJavaScript(f"window.onNativePdfLoaded('{encoded}','{name}');")
+
+    @pyqtSlot(str, str)
+    def printPdf(self, base64Data, fileName):
+        """将网页生成的最终 PDF 交给 Windows 默认 PDF 程序执行系统打印。"""
+        try:
+            raw = base64.b64decode(base64Data)
+            safe_name = Path(fileName or "print.pdf").name
+            if not safe_name.lower().endswith(".pdf"):
+                safe_name += ".pdf"
+            path = Path(tempfile.gettempdir()) / ("PDFBubbleAnnotator_Print_" + safe_name)
+            path.write_bytes(raw)
+            if sys.platform.startswith("win"):
+                os.startfile(str(path), "print")
+            else:
+                QDesktopServices.openUrl(QUrl.fromLocalFile(str(path)))
+            self.window.page.runJavaScript("window.onNativePrintStarted && window.onNativePrintStarted();")
+        except Exception as e:
+            msg = str(e).replace("\\", "\\\\").replace("'", "\\'")
+            self.window.page.runJavaScript(f"window.onNativePrintError && window.onNativePrintError('{msg}');")
+
+    @pyqtSlot(str)
+    def openFolder(self, path):
+        try:
+            folder = Path(path).resolve() if path else Path(self.window.current_dir or Path.home())
+            if not folder.exists():
+                folder = folder.parent
+            QDesktopServices.openUrl(QUrl.fromLocalFile(str(folder)))
+        except Exception:
+            pass
+
+    @pyqtSlot()
+    def openCurrentFolder(self):
+        self.openFolder(self.window.current_dir)
 
 
 class PDFBalloonApp(QMainWindow):
@@ -60,7 +93,6 @@ class PDFBalloonApp(QMainWindow):
         if os.path.exists(icon):
             self.setWindowIcon(QIcon(icon))
 
-        # 每次启动使用临时 profile，彻底避免旧缓存/LocalStorage 导致残留界面。
         self.profile = QWebEngineProfile(self)
         self.profile.setHttpCacheType(QWebEngineProfile.HttpCacheType.NoCache)
         self.profile.setPersistentCookiesPolicy(QWebEngineProfile.PersistentCookiesPolicy.NoPersistentCookies)
@@ -89,7 +121,6 @@ class PDFBalloonApp(QMainWindow):
         self.setCentralWidget(self.browser)
 
     def _on_download_requested(self, download) -> None:
-        """所有 PDF/PNG/CSV 导出默认保存到当前打开 PDF 的同一文件夹。"""
         suggested = os.path.basename(download.suggestedFileName() or "export.bin")
         save_dir = self.current_dir if self.current_dir and os.path.isdir(self.current_dir) else str(Path.home() / "Downloads")
         if not os.path.isdir(save_dir):
@@ -107,6 +138,9 @@ class PDFBalloonApp(QMainWindow):
         download.setDownloadDirectory(str(target.parent))
         download.setDownloadFileName(target.name)
         download.accept()
+        path_js = str(target).replace("\\", "\\\\").replace("'", "\\'")
+        name_js = target.name.replace("\\", "\\\\").replace("'", "\\'")
+        self.page.runJavaScript(f"window.onNativeDownloadSaved && window.onNativeDownloadSaved('{path_js}','{name_js}');")
 
     def closeEvent(self, event) -> None:
         try:
