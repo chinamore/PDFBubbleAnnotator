@@ -17,7 +17,7 @@ jobs:
       - name: Build
         shell: pwsh
         run: msbuild PDFBubbleAnnotator.vcxproj /m /t:Build /p:Configuration=Release /p:Platform=x64 /p:WindowsTargetPlatformVersion=10.0
-      - name: Download bundled web dependencies
+      - name: Download bundled offline dependencies
         shell: pwsh
         run: |
           $ErrorActionPreference='Stop'
@@ -31,7 +31,9 @@ jobs:
             @('https://unpkg.com/docx@8.5.0/build/index.umd.js',"$root\docx\8.5.0\docx.umd.min.js")
           )
           foreach($x in $items){New-Item -ItemType Directory -Force -Path (Split-Path $x[1])|Out-Null;Invoke-WebRequest $x[0] -OutFile $x[1];if((Get-Item $x[1]).Length -lt 1000){throw "Bad dependency $($x[1])"}}
-      - name: Package
+          Invoke-WebRequest 'https://go.microsoft.com/fwlink/p/?LinkId=2124703' -OutFile 'MicrosoftEdgeWebView2RuntimeInstallerX64.exe'
+          if((Get-Item 'MicrosoftEdgeWebView2RuntimeInstallerX64.exe').Length -lt 10000000){throw 'WebView2 offline installer download failed'}
+      - name: Package and verify
         shell: pwsh
         run: |
           $ErrorActionPreference='Stop'
@@ -46,13 +48,14 @@ jobs:
           Copy-Item $loader release\WebView2Loader.dll -Force
           Copy-Item web release\web -Recurse
           Copy-Item app.ico release\app.ico
-          Set-Content release\运行说明.txt 'PDF Bubble Annotator Offline Edition`r`nWindows x64`r`n`r`n本版本的 PDF.js、PDF-Lib、Excel、ZIP、Word 浏览器依赖均已随包提供。`r`n程序不依赖互联网加载网页资源。`r`nWebView2 Runtime 需要在目标电脑安装；下一阶段会把离线 Runtime 安装器也并入发布包。' -Encoding UTF8
-          $required=@('release\PDFBubbleAnnotator.exe','release\WebView2Loader.dll','release\web\index.html','release\web\component-ui.js','release\web\converter.data','release\web\cdnjs\ajax\libs\pdf.js\2.16.105\pdf.min.js','release\web\cdnjs\ajax\libs\pdf.js\2.16.105\pdf.worker.min.js','release\web\cdnjs\ajax\libs\pdf-lib\1.17.1\pdf-lib.min.js','release\web\cdnjs\ajax\libs\xlsx\0.18.5\xlsx.full.min.js','release\web\cdnjs\ajax\libs\jszip\3.10.1\jszip.min.js','release\web\cdnjs\ajax\libs\docx\8.5.0\docx.umd.min.js')
+          Copy-Item MicrosoftEdgeWebView2RuntimeInstallerX64.exe release\MicrosoftEdgeWebView2RuntimeInstallerX64.exe
+          Set-Content release\运行说明.txt 'PDF Bubble Annotator Offline Edition`r`nWindows x64`r`n`r`nPDF.js、PDF-Lib、Excel、ZIP、Word 浏览器依赖以及 Microsoft WebView2 x64 离线安装程序均随包提供。`r`n无互联网时也可部署：如目标电脑没有 WebView2 Runtime，请先运行 MicrosoftEdgeWebView2RuntimeInstallerX64.exe /silent /install，然后运行 PDFBubbleAnnotator.exe。`r`n请保持整个文件夹结构完整。' -Encoding UTF8
+          $required=@('release\PDFBubbleAnnotator.exe','release\WebView2Loader.dll','release\MicrosoftEdgeWebView2RuntimeInstallerX64.exe','release\web\index.html','release\web\component-ui.js','release\web\converter.data','release\web\cdnjs\ajax\libs\pdf.js\2.16.105\pdf.min.js','release\web\cdnjs\ajax\libs\pdf.js\2.16.105\pdf.worker.min.js','release\web\cdnjs\ajax\libs\pdf-lib\1.17.1\pdf-lib.min.js','release\web\cdnjs\ajax\libs\xlsx\0.18.5\xlsx.full.min.js','release\web\cdnjs\ajax\libs\jszip\3.10.1\jszip.min.js','release\web\cdnjs\ajax\libs\docx\8.5.0\docx.umd.min.js')
           foreach($p in $required){if(-not(Test-Path $p)){throw "Missing $p"}}
           Compress-Archive -Path release\* -DestinationPath PDFBubbleAnnotator-Offline-Windows-x64.zip -Force
           Expand-Archive PDFBubbleAnnotator-Offline-Windows-x64.zip verify-release -Force
           foreach($p in $required){$q=$p -replace '^release\\','verify-release\\';if(-not(Test-Path $q)){throw "ZIP missing $q"}}
-          Write-Host 'OFFLINE WEB PACKAGE VERIFICATION PASSED'
+          Write-Host 'OFFLINE PACKAGE VERIFICATION PASSED'
       - uses: actions/upload-artifact@v4
         with:
           name: PDFBubbleAnnotator-Offline-Windows-x64
