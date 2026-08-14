@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+permissions:
+  contents: read
 jobs:
   build:
     runs-on: windows-2022
@@ -11,20 +13,46 @@ jobs:
       - uses: actions/checkout@v4
       - uses: microsoft/setup-msbuild@v2
       - name: Restore
+        shell: pwsh
         run: msbuild PDFBubbleAnnotator.vcxproj /t:Restore /p:Configuration=Release /p:Platform=x64
       - name: Build
+        shell: pwsh
         run: msbuild PDFBubbleAnnotator.vcxproj /m /t:Build /p:Configuration=Release /p:Platform=x64 /p:WindowsTargetPlatformVersion=10.0
       - name: Package
         shell: pwsh
         run: |
+          $ErrorActionPreference = 'Stop'
           if (Test-Path release) { Remove-Item release -Recurse -Force }
           New-Item -ItemType Directory -Force release | Out-Null
-          Copy-Item x64\Release\PDFBubbleAnnotator.exe release\PDFBubbleAnnotator.exe
-          if (Test-Path x64\Release\WebView2Loader.dll) { Copy-Item x64\Release\WebView2Loader.dll release\WebView2Loader.dll }
+          $exe = 'x64\Release\PDFBubbleAnnotator.exe'
+          if (-not (Test-Path $exe)) { throw "EXE not found: $exe" }
+          Copy-Item $exe release\PDFBubbleAnnotator.exe
+
+          $nuget = Join-Path $env:USERPROFILE '.nuget\packages\microsoft.web.webview2\1.0.2903.40'
+          $loaderCandidates = @(
+            (Join-Path $nuget 'build\native\x64\WebView2Loader.dll'),
+            (Join-Path $nuget 'runtimes\win-x64\native\WebView2Loader.dll'),
+            'x64\Release\WebView2Loader.dll'
+          )
+          $loader = $loaderCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $loader) { throw "WebView2Loader.dll was not found in the build output or NuGet package." }
+          Copy-Item $loader release\WebView2Loader.dll -Force
+
           Copy-Item web release\web -Recurse
           Copy-Item app.ico release\app.ico
-          Set-Content release\运行说明.txt 'PDF Bubble Annotator v0.3`r`nWindows x64`r`n`r`nRun PDFBubbleAnnotator.exe.`r`nMicrosoft Edge WebView2 Runtime is required.' -Encoding UTF8
+          Set-Content release\运行说明.txt "PDF Bubble Annotator v0.3`r`nWindows x64`r`n`r`nRun PDFBubbleAnnotator.exe.`r`nMicrosoft Edge WebView2 Runtime is required.`r`n`r`nWebView2Loader.dll is included in this package." -Encoding UTF8
+
+          if (-not (Test-Path 'release\WebView2Loader.dll')) { throw 'Release package is missing WebView2Loader.dll.' }
+          $loaderSize = (Get-Item 'release\WebView2Loader.dll').Length
+          if ($loaderSize -lt 10000) { throw "WebView2Loader.dll is unexpectedly small: $loaderSize bytes" }
+          Write-Host "WebView2Loader.dll: $loaderSize bytes"
+
           Compress-Archive -Path release\* -DestinationPath PDFBubbleAnnotator-v0.3-Windows-x64.zip -Force
+          Expand-Archive -Path PDFBubbleAnnotator-v0.3-Windows-x64.zip -DestinationPath verify-release -Force
+          if (-not (Test-Path 'verify-release\PDFBubbleAnnotator.exe')) { throw 'Verification failed: EXE missing.' }
+          if (-not (Test-Path 'verify-release\WebView2Loader.dll')) { throw 'Verification failed: WebView2Loader.dll missing.' }
+          if (-not (Test-Path 'verify-release\web\index.html')) { throw 'Verification failed: web/index.html missing.' }
+          Write-Host 'Release package verification passed.'
       - uses: actions/upload-artifact@v4
         with:
           name: PDFBubbleAnnotator-v0.3-Windows-x64
