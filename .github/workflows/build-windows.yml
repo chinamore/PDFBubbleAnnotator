@@ -24,6 +24,7 @@ jobs:
       - name: Install Python build dependencies
         shell: pwsh
         run: |
+          $ErrorActionPreference = 'Stop'
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
@@ -36,23 +37,22 @@ jobs:
           $items = @(
             @('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js', "$root\pdf.min.js"),
             @('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js', "$root\pdf.worker.min.js"),
-            @('https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js', "$root\pdf-lib.min.js")
+            @('https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js', "$root\pdf-lib.min.js"),
+            @('https://code.qt.io/cgit/qt/qtwebchannel.git/plain/src/webchannel/qwebchannel.js?h=6.8.3', "$root\qwebchannel.js")
           )
           foreach ($x in $items) {
             Invoke-WebRequest -Uri $x[0] -OutFile $x[1]
             if ((Get-Item $x[1]).Length -lt 1000) { throw "Invalid dependency: $($x[1])" }
           }
 
-      - name: Patch HTML to local-only dependencies
+      - name: Validate source files
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $p = 'web\index.html'
-          $s = Get-Content $p -Raw -Encoding UTF8
-          $s = $s -replace 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js', './vendor/pdf.min.js'
-          $s = $s -replace 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js', './vendor/pdf.worker.min.js'
-          $s = $s -replace 'https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js', './vendor/pdf-lib.min.js'
-          Set-Content $p $s -Encoding UTF8
+          if (-not (Test-Path 'web\index.html')) { throw 'web/index.html missing' }
+          if (-not (Test-Path 'main.py')) { throw 'main.py missing' }
+          if (-not (Test-Path 'app.ico')) { throw 'app.ico missing' }
+          python -m py_compile main.py
 
       - name: Build single EXE
         shell: pwsh
@@ -64,6 +64,7 @@ jobs:
             --collect-all PyQt6 `
             --collect-all PyQt6.QtWebEngineCore `
             --collect-all PyQt6.QtWebEngineWidgets `
+            --collect-all PyQt6.QtWebChannel `
             main.py
           if (-not (Test-Path 'dist\PDFBubbleAnnotator.exe')) { throw 'EXE was not produced' }
           $size = (Get-Item 'dist\PDFBubbleAnnotator.exe').Length
