@@ -1,9 +1,8 @@
-name: Build Windows EXE
+name: Build Windows Offline EXE
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
+    branches: [ main ]
 permissions:
   contents: read
 jobs:
@@ -18,43 +17,44 @@ jobs:
       - name: Build
         shell: pwsh
         run: msbuild PDFBubbleAnnotator.vcxproj /m /t:Build /p:Configuration=Release /p:Platform=x64 /p:WindowsTargetPlatformVersion=10.0
+      - name: Download bundled web dependencies
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          $root='web\cdnjs\ajax\libs'
+          $items=@(
+            @('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js',"$root\pdf.js\2.16.105\pdf.min.js"),
+            @('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js',"$root\pdf.js\2.16.105\pdf.worker.min.js"),
+            @('https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js',"$root\pdf-lib\1.17.1\pdf-lib.min.js"),
+            @('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',"$root\xlsx\0.18.5\xlsx.full.min.js"),
+            @('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js',"$root\jszip\3.10.1\jszip.min.js"),
+            @('https://unpkg.com/docx@8.5.0/build/index.umd.js',"$root\docx\8.5.0\docx.umd.min.js")
+          )
+          foreach($x in $items){New-Item -ItemType Directory -Force -Path (Split-Path $x[1])|Out-Null;Invoke-WebRequest $x[0] -OutFile $x[1];if((Get-Item $x[1]).Length -lt 1000){throw "Bad dependency $($x[1])"}}
       - name: Package
         shell: pwsh
         run: |
-          $ErrorActionPreference = 'Stop'
-          if (Test-Path release) { Remove-Item release -Recurse -Force }
-          New-Item -ItemType Directory -Force release | Out-Null
-          $exe = 'x64\Release\PDFBubbleAnnotator.exe'
-          if (-not (Test-Path $exe)) { throw "EXE not found: $exe" }
-          Copy-Item $exe release\PDFBubbleAnnotator.exe
-
-          $nuget = Join-Path $env:USERPROFILE '.nuget\packages\microsoft.web.webview2\1.0.2903.40'
-          $loaderCandidates = @(
-            (Join-Path $nuget 'build\native\x64\WebView2Loader.dll'),
-            (Join-Path $nuget 'runtimes\win-x64\native\WebView2Loader.dll'),
-            'x64\Release\WebView2Loader.dll'
-          )
-          $loader = $loaderCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
-          if (-not $loader) { throw "WebView2Loader.dll was not found in the build output or NuGet package." }
+          $ErrorActionPreference='Stop'
+          if(Test-Path release){Remove-Item release -Recurse -Force}
+          New-Item -ItemType Directory -Force release|Out-Null
+          if(-not(Test-Path 'x64\Release\PDFBubbleAnnotator.exe')){throw 'EXE missing'}
+          Copy-Item 'x64\Release\PDFBubbleAnnotator.exe' release\PDFBubbleAnnotator.exe
+          $nuget=Join-Path $env:USERPROFILE '.nuget\packages\microsoft.web.webview2\1.0.2903.40'
+          $candidates=@((Join-Path $nuget 'build\native\x64\WebView2Loader.dll'),(Join-Path $nuget 'runtimes\win-x64\native\WebView2Loader.dll'),'x64\Release\WebView2Loader.dll')
+          $loader=$candidates|Where-Object{Test-Path $_}|Select-Object -First 1
+          if(-not$loader){throw 'WebView2Loader.dll missing'}
           Copy-Item $loader release\WebView2Loader.dll -Force
-
           Copy-Item web release\web -Recurse
           Copy-Item app.ico release\app.ico
-          Set-Content release\运行说明.txt "PDF Bubble Annotator v0.3`r`nWindows x64`r`n`r`nRun PDFBubbleAnnotator.exe.`r`nMicrosoft Edge WebView2 Runtime is required.`r`n`r`nWebView2Loader.dll is included in this package." -Encoding UTF8
-
-          if (-not (Test-Path 'release\WebView2Loader.dll')) { throw 'Release package is missing WebView2Loader.dll.' }
-          $loaderSize = (Get-Item 'release\WebView2Loader.dll').Length
-          if ($loaderSize -lt 10000) { throw "WebView2Loader.dll is unexpectedly small: $loaderSize bytes" }
-          Write-Host "WebView2Loader.dll: $loaderSize bytes"
-
-          Compress-Archive -Path release\* -DestinationPath PDFBubbleAnnotator-v0.3-Windows-x64.zip -Force
-          Expand-Archive -Path PDFBubbleAnnotator-v0.3-Windows-x64.zip -DestinationPath verify-release -Force
-          if (-not (Test-Path 'verify-release\PDFBubbleAnnotator.exe')) { throw 'Verification failed: EXE missing.' }
-          if (-not (Test-Path 'verify-release\WebView2Loader.dll')) { throw 'Verification failed: WebView2Loader.dll missing.' }
-          if (-not (Test-Path 'verify-release\web\index.html')) { throw 'Verification failed: web/index.html missing.' }
-          Write-Host 'Release package verification passed.'
+          Set-Content release\运行说明.txt 'PDF Bubble Annotator Offline Edition`r`nWindows x64`r`n`r`n本版本的 PDF.js、PDF-Lib、Excel、ZIP、Word 浏览器依赖均已随包提供。`r`n程序不依赖互联网加载网页资源。`r`nWebView2 Runtime 需要在目标电脑安装；下一阶段会把离线 Runtime 安装器也并入发布包。' -Encoding UTF8
+          $required=@('release\PDFBubbleAnnotator.exe','release\WebView2Loader.dll','release\web\index.html','release\web\component-ui.js','release\web\converter.data','release\web\cdnjs\ajax\libs\pdf.js\2.16.105\pdf.min.js','release\web\cdnjs\ajax\libs\pdf.js\2.16.105\pdf.worker.min.js','release\web\cdnjs\ajax\libs\pdf-lib\1.17.1\pdf-lib.min.js','release\web\cdnjs\ajax\libs\xlsx\0.18.5\xlsx.full.min.js','release\web\cdnjs\ajax\libs\jszip\3.10.1\jszip.min.js','release\web\cdnjs\ajax\libs\docx\8.5.0\docx.umd.min.js')
+          foreach($p in $required){if(-not(Test-Path $p)){throw "Missing $p"}}
+          Compress-Archive -Path release\* -DestinationPath PDFBubbleAnnotator-Offline-Windows-x64.zip -Force
+          Expand-Archive PDFBubbleAnnotator-Offline-Windows-x64.zip verify-release -Force
+          foreach($p in $required){$q=$p -replace '^release\\','verify-release\\';if(-not(Test-Path $q)){throw "ZIP missing $q"}}
+          Write-Host 'OFFLINE WEB PACKAGE VERIFICATION PASSED'
       - uses: actions/upload-artifact@v4
         with:
-          name: PDFBubbleAnnotator-v0.3-Windows-x64
-          path: PDFBubbleAnnotator-v0.3-Windows-x64.zip
+          name: PDFBubbleAnnotator-Offline-Windows-x64
+          path: PDFBubbleAnnotator-Offline-Windows-x64.zip
           if-no-files-found: error
