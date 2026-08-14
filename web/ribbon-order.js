@@ -8,6 +8,7 @@ function activateBubble(){var b=document.querySelector('.tool[data-tool="bubble"
 function rebuild(){
   if(document.getElementById('orderedRibbon'))return;
   var old=document.querySelector('.ribbon');if(!old)return;
+  var groups=Array.prototype.slice.call(old.querySelectorAll('.rgroup'));
   var r=el('div','ribbon ordered-ribbon');r.id='orderedRibbon';
   var open=document.getElementById('openBtn'),save=document.getElementById('save'),print=document.getElementById('print'),undo=document.getElementById('undo'),clear=document.getElementById('clear');
   if(open)r.appendChild(open);if(save)r.appendChild(save);if(print)r.appendChild(print);
@@ -23,8 +24,10 @@ function rebuild(){
   var op=document.createElement('input');op.id='topOpacity';op.type='range';op.min='0';op.max='100';op.value='100';op.className='ribbon-range';r.appendChild(makeItem('透明度',op));
   r.appendChild(makeItem('字体色',colorClone('fontColor','topFontColor')));
   if(undo)r.appendChild(undo);if(clear)r.appendChild(clear);
+  /* 保留原来的翻页、缩放、云线、引线、文字、测量、复制、重做等功能，放在用户指定的气泡设置之后。 */
+  for(var i=1;i<groups.length;i++){if(groups[i])r.appendChild(groups[i]);}
   old.replaceWith(r);
-  var style=document.createElement('style');style.textContent='.ordered-ribbon{display:flex;align-items:center;gap:6px;padding:5px 10px;background:#fff;border-bottom:1px solid #dbe2ea;box-shadow:0 1px 2px #0001;overflow-x:auto;overflow-y:hidden;white-space:nowrap;scrollbar-width:thin}.ordered-ribbon>button{flex:0 0 auto;padding:6px 10px;font-size:12px}.ordered-ribbon .ribbon-item{display:flex;align-items:center;gap:4px;flex:0 0 auto;border-left:1px solid #e2e8f0;padding-left:7px}.ordered-ribbon .ribbon-label{font-size:11px;color:#64748b}.ordered-ribbon .ribbon-input{width:58px;height:28px;padding:4px 6px;border:1px solid #cbd5e1;border-radius:4px}.ordered-ribbon .ribbon-color{width:30px;height:28px;padding:1px;border:1px solid #cbd5e1;border-radius:4px}.ordered-ribbon .ribbon-check{width:16px;height:16px}.ordered-ribbon .ribbon-range{width:100px}.ordered-ribbon .bubble-add{background:#16a36a;color:#fff;border-color:#16a36a;font-weight:700}.ordered-ribbon .danger{color:#b42318!important}.ordered-ribbon::-webkit-scrollbar{height:7px}.ordered-ribbon::-webkit-scrollbar-thumb{background:#b8c4d4;border-radius:8px}';document.head.appendChild(style);
+  var style=document.createElement('style');style.textContent='.ordered-ribbon{display:flex;align-items:center;gap:6px;padding:5px 10px;background:#fff;border-bottom:1px solid #dbe2ea;box-shadow:0 1px 2px #0001;overflow-x:auto;overflow-y:hidden;white-space:nowrap;scrollbar-width:thin}.ordered-ribbon>button{flex:0 0 auto;padding:6px 10px;font-size:12px}.ordered-ribbon .rgroup{display:flex;align-items:center;gap:4px;padding-right:8px;border-right:1px solid #e2e8f0;flex:0 0 auto}.ordered-ribbon .ribbon-item{display:flex;align-items:center;gap:4px;flex:0 0 auto;border-left:1px solid #e2e8f0;padding-left:7px}.ordered-ribbon .ribbon-label{font-size:11px;color:#64748b}.ordered-ribbon .ribbon-input{width:58px;height:28px;padding:4px 6px;border:1px solid #cbd5e1;border-radius:4px}.ordered-ribbon .ribbon-color{width:30px;height:28px;padding:1px;border:1px solid #cbd5e1;border-radius:4px}.ordered-ribbon .ribbon-check{width:16px;height:16px}.ordered-ribbon .ribbon-range{width:100px}.ordered-ribbon .bubble-add{background:#16a36a;color:#fff;border-color:#16a36a;font-weight:700}.ordered-ribbon .danger{color:#b42318!important}.ordered-ribbon::-webkit-scrollbar{height:7px}.ordered-ribbon::-webkit-scrollbar-thumb{background:#b8c4d4;border-radius:8px}';document.head.appendChild(style);
   if(document.querySelector('.panel .section')){var sec=document.querySelector('.panel .section');if(sec)sec.style.display='none';}
   op.addEventListener('input',function(){var fill=document.getElementById('fillColor');if(fill){fill.style.opacity=String(Math.max(0,Math.min(1,Number(op.value)/100)));}});
 }
