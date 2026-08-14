@@ -1,1 +1,1 @@
-Trigger Windows build after removing the NuGet PackageReference from the C/WebView2 project.
+Trigger Windows build for PDF bubble scaling and real PNG export fixes.
