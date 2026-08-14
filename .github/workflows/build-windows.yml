@@ -34,6 +34,7 @@ jobs:
           $ErrorActionPreference = 'Stop'
           $root = 'web\vendor'
           New-Item -ItemType Directory -Force -Path $root | Out-Null
+
           $items = @(
             @('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js', "$root\pdf.min.js"),
             @('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js', "$root\pdf.worker.min.js"),
@@ -43,10 +44,19 @@ jobs:
             Invoke-WebRequest -Uri $x[0] -OutFile $x[1]
             if ((Get-Item $x[1]).Length -lt 1000) { throw "Invalid dependency: $($x[1])" }
           }
-          # qwebchannel.js is supplied by Qt WebEngine itself through qrc://.
-          # Do not download it from the old Qt cgit endpoint; that endpoint no
-          # longer returns the JavaScript source reliably.
-          if (Test-Path "$root\qwebchannel.js") { Remove-Item "$root\qwebchannel.js" -Force }
+
+          # Qt's cgit plain endpoint stopped returning the JS source reliably.
+          # Vendor the exact Qt 6.8.3 WebChannel source from the official release archive.
+          $qtZip = Join-Path $env:RUNNER_TEMP 'qtwebchannel-6.8.3.zip'
+          $qtExtract = Join-Path $env:RUNNER_TEMP 'qtwebchannel-6.8.3'
+          Invoke-WebRequest -Uri 'https://download.qt.io/official_releases/qt/6.8/6.8.3/submodules/qtwebchannel-everywhere-src-6.8.3.zip' -OutFile $qtZip
+          if ((Get-Item $qtZip).Length -lt 100000) { throw 'Qt WebChannel archive download is invalid' }
+          if (Test-Path $qtExtract) { Remove-Item $qtExtract -Recurse -Force }
+          Expand-Archive -Path $qtZip -DestinationPath $qtExtract -Force
+          $qwc = Get-ChildItem -Path $qtExtract -Filter 'qwebchannel.js' -File -Recurse | Select-Object -First 1
+          if ($null -eq $qwc) { throw 'qwebchannel.js was not found in Qt WebChannel archive' }
+          Copy-Item $qwc.FullName "$root\qwebchannel.js" -Force
+          if ((Get-Item "$root\qwebchannel.js").Length -lt 10000) { throw 'Invalid qwebchannel.js' }
 
       - name: Validate source files
         shell: pwsh
@@ -55,7 +65,10 @@ jobs:
           if (-not (Test-Path 'web\index.html')) { throw 'web/index.html missing' }
           if (-not (Test-Path 'main.py')) { throw 'main.py missing' }
           if (-not (Test-Path 'app.ico')) { throw 'app.ico missing' }
-          if (-not (Select-String -Path 'web\index.html' -Pattern 'qrc:///qtwebchannel/qwebchannel.js' -Quiet)) { throw 'qwebchannel.js must be loaded from Qt qrc resource' }
+          if (-not (Test-Path 'web\vendor\pdf.min.js')) { throw 'pdf.min.js missing' }
+          if (-not (Test-Path 'web\vendor\pdf.worker.min.js')) { throw 'pdf.worker.min.js missing' }
+          if (-not (Test-Path 'web\vendor\pdf-lib.min.js')) { throw 'pdf-lib.min.js missing' }
+          if (-not (Test-Path 'web\vendor\qwebchannel.js')) { throw 'qwebchannel.js missing' }
           python -m py_compile main.py
 
       - name: Build single EXE
