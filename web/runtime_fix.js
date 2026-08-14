@@ -26,19 +26,35 @@
         const x=(Number(a.nx)||0)*w;
         const y=(1-(Number(a.ny)||0))*h;
         const k=baseScale;
-        const wantedDiameter=Math.max(0,Number(a.size)||28)/k;
+
+        // IMPORTANT: pdf-lib drawCircle({size}) uses size as the radius scale,
+        // not the CSS diameter. The previous patch passed a diameter here,
+        // which made exported PDF bubbles about 2x too large.
+        //
+        // CSS: width/height = configured OUTER diameter, border is inside the
+        // box because box-sizing:border-box. PDF stroke is centered on its path.
+        // Therefore the circle path radius must be (outerDiameter-border)/2.
+        const outerDiameter=Math.max(0,Number(a.size)||28)/k;
         const borderWidth=Math.max(0,Number(a.border)||2)/k;
-        // CSS uses box-sizing:border-box, so the configured size is the OUTER diameter.
-        // pdf-lib centers the stroke on the circle path, therefore subtract one border width
-        // from the path diameter so the final painted outer diameter matches the UI size.
-        const pathDiameter=Math.max(0,wantedDiameter-borderWidth);
-        p.drawCircle({
-          x,y,size:pathDiameter,
-          borderWidth,
-          borderColor:rgb(a.outerColor),
-          color:a.isTransparent?undefined:rgb(a.innerColor),
-          opacity:a.isTransparent?undefined:(a.opacity==null?1:Number(a.opacity))
-        });
+        const pathRadius=Math.max(0,(outerDiameter-borderWidth)/2);
+        const fillRadius=Math.max(0,(outerDiameter/2)-borderWidth);
+
+        if(!a.isTransparent && fillRadius>0){
+          p.drawCircle({
+            x,y,size:fillRadius,
+            color:rgb(a.innerColor),
+            opacity:a.opacity==null?1:Number(a.opacity)
+          });
+        }
+
+        if(pathRadius>0){
+          p.drawCircle({
+            x,y,size:pathRadius,
+            borderWidth,
+            borderColor:rgb(a.outerColor)
+          });
+        }
+
         const fs=Math.max(1,(Number(a.fontSize)||13)/k);
         const text=String(a.text||'');
         const tw=font.widthOfTextAtSize(text,fs);
