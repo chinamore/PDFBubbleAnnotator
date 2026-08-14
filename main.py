@@ -112,6 +112,7 @@ class PDFBalloonApp(QMainWindow):
         self.channel.registerObject("nativeBridge", self.bridge)
         self.page.setWebChannel(self.channel)
         self.profile.downloadRequested.connect(self._on_download_requested)
+        self.page.loadFinished.connect(self._inject_runtime_fix)
 
         index = Path(resource_path("web/index.html")).resolve()
         if not index.exists():
@@ -119,6 +120,16 @@ class PDFBalloonApp(QMainWindow):
             raise RuntimeError("web/index.html missing")
         self.browser.setUrl(QUrl.fromLocalFile(str(index)))
         self.setCentralWidget(self.browser)
+
+    def _inject_runtime_fix(self, ok: bool) -> None:
+        if not ok:
+            return
+        try:
+            patch = Path(resource_path("web/runtime_fix.js"))
+            if patch.exists():
+                self.page.runJavaScript(patch.read_text(encoding="utf-8"))
+        except Exception as e:
+            print("runtime fix injection failed:", e)
 
     def _on_download_requested(self, download) -> None:
         suggested = os.path.basename(download.suggestedFileName() or "export.bin")
