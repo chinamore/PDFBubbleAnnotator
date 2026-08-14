@@ -31,8 +31,14 @@ jobs:
             @('https://unpkg.com/docx@8.5.0/build/index.umd.js',"$root\docx\8.5.0\docx.umd.min.js")
           )
           foreach($x in $items){New-Item -ItemType Directory -Force -Path (Split-Path $x[1])|Out-Null;Invoke-WebRequest $x[0] -OutFile $x[1];if((Get-Item $x[1]).Length -lt 1000){throw "Bad dependency $($x[1])"}}
-          Invoke-WebRequest 'https://go.microsoft.com/fwlink/p/?LinkId=2124703' -OutFile 'MicrosoftEdgeWebView2RuntimeInstallerX64.exe'
-          if((Get-Item 'MicrosoftEdgeWebView2RuntimeInstallerX64.exe').Length -lt 10000000){throw 'WebView2 offline installer download failed'}
+          $runtime='MicrosoftEdgeWebView2RuntimeInstallerX64.exe'
+          Invoke-WebRequest 'https://go.microsoft.com/fwlink/p/?LinkId=2124703' -OutFile $runtime
+          $runtimeSize=(Get-Item $runtime).Length
+          Write-Host "WebView2 offline installer size: $runtimeSize bytes"
+          if($runtimeSize -lt 1000000){throw "WebView2 offline installer download failed or returned an unexpected response ($runtimeSize bytes)"}
+          $head=[System.IO.File]::OpenRead($runtime)
+          try { $b1=$head.ReadByte(); $b2=$head.ReadByte() } finally { $head.Dispose() }
+          if($b1 -ne 77 -or $b2 -ne 90){throw 'WebView2 offline installer is not a Windows PE executable'}
       - name: Package and verify
         shell: pwsh
         run: |
