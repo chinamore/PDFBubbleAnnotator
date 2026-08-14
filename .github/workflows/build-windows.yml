@@ -28,7 +28,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Vendor browser libraries for offline use
+      - name: Vendor browser libraries for offline runtime
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -37,13 +37,16 @@ jobs:
           $items = @(
             @('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js', "$root\pdf.min.js"),
             @('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js', "$root\pdf.worker.min.js"),
-            @('https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js', "$root\pdf-lib.min.js"),
-            @('https://code.qt.io/cgit/qt/qtwebchannel.git/plain/src/webchannel/qwebchannel.js?h=6.8.3', "$root\qwebchannel.js")
+            @('https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js', "$root\pdf-lib.min.js")
           )
           foreach ($x in $items) {
             Invoke-WebRequest -Uri $x[0] -OutFile $x[1]
             if ((Get-Item $x[1]).Length -lt 1000) { throw "Invalid dependency: $($x[1])" }
           }
+          # qwebchannel.js is supplied by Qt WebEngine itself through qrc://.
+          # Do not download it from the old Qt cgit endpoint; that endpoint no
+          # longer returns the JavaScript source reliably.
+          if (Test-Path "$root\qwebchannel.js") { Remove-Item "$root\qwebchannel.js" -Force }
 
       - name: Validate source files
         shell: pwsh
@@ -52,6 +55,7 @@ jobs:
           if (-not (Test-Path 'web\index.html')) { throw 'web/index.html missing' }
           if (-not (Test-Path 'main.py')) { throw 'main.py missing' }
           if (-not (Test-Path 'app.ico')) { throw 'app.ico missing' }
+          if (-not (Select-String -Path 'web\index.html' -Pattern 'qrc:///qtwebchannel/qwebchannel.js' -Quiet)) { throw 'qwebchannel.js must be loaded from Qt qrc resource' }
           python -m py_compile main.py
 
       - name: Build single EXE
