@@ -4,19 +4,41 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>PDF for Hu-Nan Zhu -Power By www.175.es</title>
 <script src="./vendor/qwebchannel.js"></script><script src="./vendor/pdf.min.js"></script><script>pdfjsLib.GlobalWorkerOptions.workerSrc='./vendor/pdf.worker.min.js';</script><script src="./vendor/pdf-lib.min.js"></script>
+
+<!-- 引入 3D 渲染所需的 Three.js 与 STLLoader -->
+<script type="importmap">
+{
+    "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+}
+</script>
+
 <style>
 *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;font:13px "Segoe UI","Microsoft YaHei",sans-serif;color:#172033;background:#dfe5ec}button,input{font:inherit}button{border:1px solid #cbd5e1;background:#fff;color:#263244;border-radius:5px;padding:5px 9px;cursor:pointer}button:hover{background:#eaf2ff;border-color:#7aa7e8}button.primary{background:#1677ff;color:#fff;border-color:#1677ff}button.success{background:#16a36a;color:#fff;border-color:#16a36a}.danger{color:#b42318}.hidden{display:none!important}
 .app{height:100vh;display:grid;grid-template-rows:42px auto 1fr 25px}.top{display:flex;align-items:center;padding:0 12px;background:#0f1d32;color:#fff;gap:14px}.brand{font-size:15px;font-weight:700;white-space:nowrap}.topnav{display:flex;gap:3px;overflow:auto}.topnav button{background:transparent;color:#dce7f7;border-color:transparent}.topnav button.active{background:#263a57;color:#fff}.version{margin-left:auto;color:#9fb1ca;font-size:11px;white-space:nowrap}
 .ribbon{display:flex;align-items:center;gap:5px;padding:5px 9px;background:#fff;border-bottom:1px solid #dbe2ea;box-shadow:0 1px 2px #0001;overflow-x:auto;white-space:nowrap}.rgroup{display:flex;align-items:center;gap:4px;padding-right:8px;border-right:1px solid #e2e8f0;flex:none}.rgroup:last-child{border:0}.ribbon button{padding:5px 8px;font-size:12px}.field{width:64px;border:1px solid #cbd5e1;border-radius:4px;padding:5px}.color{width:30px;height:25px;padding:1px}.range{width:55px}.tool.active{background:#dbeafe;border-color:#60a5fa;color:#0757b8}
-.workspace{min-height:0;display:grid;grid-template-columns:250px minmax(0,1fr) 290px;gap:1px;background:#cbd5e1}.panel{background:#fff;min-width:0;overflow:auto}.panel-title{padding:9px 11px;font-weight:700;border-bottom:1px solid #e5e7eb;background:#f8fafc}.section{padding:10px;border-bottom:1px solid #e5e7eb}.section h4{margin:0 0 8px;font-size:12px;color:#475569}.row{display:flex;align-items:center;gap:6px;margin:6px 0}.row>input:last-child,.row>select:last-child{margin-left:auto}.check{margin-right:4px}.center{position:relative;overflow:auto;background:#dfe5ec}.canvasbar{position:sticky;top:0;z-index:5;height:34px;background:#26364d;color:#fff;display:flex;align-items:center;padding:0 8px;gap:10px}.canvasbar .right{margin-left:auto}.viewer{width:100%;min-width:0;min-height:calc(100% - 34px);padding:24px;display:flex;justify-content:center;align-items:flex-start}.paper{position:relative;background:#fff;box-shadow:0 5px 22px #0003;line-height:0}.paper canvas{display:block}.overlay{position:absolute;inset:0}.badge{position:absolute;transform:translate(-50%,-50%);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;cursor:grab;user-select:none;box-sizing:border-box;touch-action:none}.badge-inner{width:100%;height:100%;border-radius:50%;display:flex;align-items:center;justify-content:center;line-height:1;text-align:center;pointer-events:none}.badge.sel{outline:2px dashed #1677ff;outline-offset:3px}.badge.dragging{opacity:.82;cursor:grabbing;z-index:20}.empty{color:#64748b;text-align:center;padding:70px 20px}.empty strong{display:block;font-size:20px;color:#334155;margin-bottom:10px}.list{padding:6px}.item{display:flex;align-items:center;gap:6px;padding:7px;border-radius:5px}.item:hover{background:#f1f5f9}.dot{width:9px;height:9px;border-radius:50%}.stat{display:grid;grid-template-columns:1fr 1fr;gap:6px}.stat div{background:#f8fafc;border:1px solid #e2e8f0;border-radius:5px;padding:8px}.stat b{display:block;font-size:17px}.status{background:#0f1d32;color:#dbe7f5;padding:4px 10px;font-size:11px;display:flex;justify-content:space-between}.note{font-size:11px;color:#64748b;line-height:1.5}.tool-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}.tool-grid button{width:100%;height:52px;min-height:52px;padding:5px 3px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;overflow:hidden}.quick-name{font-size:12px;font-weight:600;line-height:18px;white-space:nowrap}.quick-desc{font-size:9px;color:#94a3b8;line-height:13px;white-space:nowrap}.saved-box{display:flex;flex-direction:column;gap:7px}.saved-toolbar{display:flex;gap:6px}.saved-toolbar button{flex:1;font-size:11px}.saved-list{display:flex;flex-direction:column;gap:6px;max-height:260px;overflow:auto}.saved-card{display:flex;align-items:center;gap:8px;padding:7px;border:1px solid #e2e8f0;border-radius:7px;background:#fafcff;cursor:pointer}.saved-card:hover{background:#eff6ff;border-color:#93c5fd}.saved-thumb{width:42px;height:42px;border-radius:5px;object-fit:cover;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-size:21px;flex:none}.saved-info{min-width:0;flex:1}.saved-name{font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.saved-path{font-size:9px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}.saved-empty{font-size:11px;color:#94a3b8;text-align:center;padding:12px;border:1px dashed #cbd5e1;border-radius:6px}
+.workspace{min-height:0;display:grid;grid-template-columns:250px minmax(0,1fr) 290px;gap:1px;background:#cbd5e1}.panel{background:#fff;min-width:0;overflow:auto}.panel-title{padding:9px 11px;font-weight:700;border-bottom:1px solid #e5e7eb;background:#f8fafc}.section{padding:10px;border-bottom:1px solid #e5e7eb}.section h4{margin:0 0 8px;font-size:12px;color:#475569}.row{display:flex;align-items:center;gap:6px;margin:6px 0}.row>input:last-child,.row>select:last-child{margin-left:auto}.check{margin-right:4px}.center{position:relative;overflow:auto;background:#dfe5ec}.canvasbar{position:sticky;top:0;z-index:5;height:34px;background:#26364d;color:#fff;display:flex;align-items:center;padding:0 8px;gap:10px}.canvasbar .right{margin-left:auto}.viewer{width:100%;min-width:0;min-height:calc(100% - 34px);padding:24px;display:flex;justify-content:center;align-items:flex-start;position:relative;height:calc(100% - 34px);}.paper{position:relative;background:#fff;box-shadow:0 5px 22px #0003;line-height:0}.paper canvas{display:block}.overlay{position:absolute;inset:0}.badge{position:absolute;transform:translate(-50%,-50%);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;cursor:grab;user-select:none;box-sizing:border-box;touch-action:none}.badge-inner{width:100%;height:100%;border-radius:50%;display:flex;align-items:center;justify-content:center;line-height:1;text-align:center;pointer-events:none}.badge.sel{outline:2px dashed #1677ff;outline-offset:3px}.badge.dragging{opacity:.82;cursor:grabbing;z-index:20}.empty{color:#64748b;text-align:center;padding:70px 20px}.empty strong{display:block;font-size:20px;color:#334155;margin-bottom:10px}.list{padding:6px}.item{display:flex;align-items:center;gap:6px;padding:7px;border-radius:5px}.item:hover{background:#f1f5f9}.dot{width:9px;height:9px;border-radius:50%}.stat{display:grid;grid-template-columns:1fr 1fr;gap:6px}.stat div{background:#f8fafc;border:1px solid #e2e8f0;border-radius:5px;padding:8px}.stat b{display:block;font-size:17px}.status{background:#0f1d32;color:#dbe7f5;padding:4px 10px;font-size:11px;display:flex;justify-content:space-between}.note{font-size:11px;color:#64748b;line-height:1.5}.tool-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}.tool-grid button{width:100%;height:52px;min-height:52px;padding:5px 3px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;overflow:hidden}.quick-name{font-size:12px;font-weight:600;line-height:18px;white-space:nowrap}.quick-desc{font-size:9px;color:#94a3b8;line-height:13px;white-space:nowrap}.saved-box{display:flex;flex-direction:column;gap:7px}.saved-toolbar{display:flex;gap:6px}.saved-toolbar button{flex:1;font-size:11px}.saved-list{display:flex;flex-direction:column;gap:6px;max-height:260px;overflow:auto}.saved-card{display:flex;align-items:center;gap:8px;padding:7px;border:1px solid #e2e8f0;border-radius:7px;background:#fafcff;cursor:pointer}.saved-card:hover{background:#eff6ff;border-color:#93c5fd}.saved-thumb{width:42px;height:42px;border-radius:5px;object-fit:cover;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-size:21px;flex:none}.saved-info{min-width:0;flex:1}.saved-name{font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.saved-path{font-size:9px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}.saved-empty{font-size:11px;color:#94a3b8;text-align:center;padding:12px;border:1px dashed #cbd5e1;border-radius:6px}
+
+/* 追加：3D 独占主屏渲染区样式 */
+#viewer-3d-container {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #1e1e1e;
+    z-index: 10;
+}
+
 @media(max-width:1100px){.workspace{grid-template-columns:210px minmax(0,1fr)}.workspace>.panel:last-child{display:none}.version{display:none}}
 </style>
 </head>
 <body><div class="app">
-<header class="top"><div class="brand">📐 PDF for Hu-Nan Zhu -Power By www.175.es</div><nav class="topnav"><button class="active">图纸</button><button>转换</button><button>测量</button><button>管理</button></nav><span class="version">Professional Workspace · v1.1</span></header>
-<div class="ribbon"><div class="rgroup"><button id="openBtn" class="primary">📂 打开 PDF</button><input id="file" type="file" accept="application/pdf" class="hidden"><button id="save" class="success">💾 导出 PDF</button><button id="png">🖼 导出 PNG</button><button id="print">🖨 打印</button></div><div class="rgroup"><button id="prev">◀</button><input id="pageInput" class="field" value="1" style="width:48px;text-align:center"><span>/ <b id="pageCount">0</b></span><button id="next">▶</button></div><div class="rgroup"><button id="zoomOut">−</button><span id="zoomInfo">100%</span><button id="zoomIn">＋</button><button id="zoomFit">适合</button></div><div class="rgroup"><button class="tool active" data-tool="select">🖱选择</button><button class="tool" data-tool="bubble">①气泡</button><button class="tool" data-tool="cloud">☁云线</button><button class="tool" data-tool="leader">↗引线</button><button class="tool" data-tool="text">T文字</button></div><div class="rgroup"><button id="undo">↶撤销</button><button id="redo">↷重做</button><button id="clear" class="danger">清空</button></div></div>
+<header class="top"><div class="brand">📐 PDF for Hu-Nan Zhu -Power By www.175.es</div><nav class="topnav"><button id="btn-mode-2d" class="active" onclick="switchTo2DMode()">图纸 (2D)</button><button id="btn-mode-3d" onclick="switchTo3DMode()">模型 (3D)</button><button>转换</button><button>测量</button><button>管理</button></nav><span class="version">Professional Workspace · v1.1</span></header>
+<div class="ribbon"><div class="rgroup"><button id="openBtn" class="primary">📂 打开 PDF</button><input id="file" type="file" accept="application/pdf" class="hidden"><button id="save" class="success">💾 导出 PDF</button><button id="png">🖼 导出 PNG</button><button id="print">🖨 打印</button></div><div class="rgroup" id="group-3d-tools" style="display:none;"><button id="openStlBtn" class="primary" onclick="document.getElementById('stlFileInput').click()">🧊 打开 3D 模型 (.stl)</button><input id="stlFileInput" type="file" accept=".stl" class="hidden"><button onclick="if(window.viewer3d) window.viewer3d.resetCameraView()">🎯 重置视角</button></div><div class="rgroup"><button id="prev">◀</button><input id="pageInput" class="field" value="1" style="width:48px;text-align:center"><span>/ <b id="pageCount">0</b></span><button id="next">▶</button></div><div class="rgroup"><button id="zoomOut">−</button><span id="zoomInfo">100%</span><button id="zoomIn">＋</button><button id="zoomFit">适合</button></div><div class="rgroup"><button class="tool active" data-tool="select">🖱选择</button><button class="tool" data-tool="bubble">①气泡</button><button class="tool" data-tool="cloud">☁云线</button><button class="tool" data-tool="leader">↗引线</button><button class="tool" data-tool="text">T文字</button></div><div class="rgroup"><button id="undo">↶撤销</button><button id="redo">↷重做</button><button id="clear" class="danger">清空</button></div></div>
 <div class="workspace"><aside class="panel"><div class="panel-title">气泡标注</div><div class="section" id="sizeSection"><h4>大小参数选择</h4><div class="row"><span>下一个序号</span><input id="seq" class="field" type="number" value="1" min="1"></div><div class="row"><span>圆圈大小</span><input id="size" class="field" type="number" value="28" min="10" max="120"></div><div class="row"><span>外圈粗细</span><input id="border" class="field" type="number" value="2" min="1" max="15"></div><div class="row"><span>字号</span><input id="font" class="field" type="number" value="13" min="6" max="60"></div></div><div class="section"><h4>颜色（按原核心代码保留）</h4><div class="row"><span>外圈颜色</span><input id="outer" class="color" type="color" value="#ef3340"></div><div class="row"><span>内圈颜色</span><input id="inner" class="color" type="color" value="#ffffff"></div><div class="row"><span>字体颜色</span><input id="fontColor" class="color" type="color" value="#ef3340"></div><div class="row"><label><input id="transparent" class="check" type="checkbox" checked>默认透明填充</label></div><div class="row"><span>填充透明度</span><input id="opacity" class="range" type="range" min="0" max="1" step="0.1" value="1"><span id="opacityValue">100%</span></div></div><div class="section"><h4>快速功能</h4><div class="tool-grid"><button id="batchPng"><span class="quick-name">📦 批量PNG</span><span class="quick-desc">PDF批量转图</span></button><button id="extractText"><span class="quick-name">🔤 文字提取</span><span class="quick-desc">提取PDF文字</span></button><button id="exportCsv"><span class="quick-name">📊 统计CSV</span><span class="quick-desc">导出标注统计</span></button><button id="compare"><span class="quick-name">🔍 图纸对比</span><span class="quick-desc">页面对比工具</span></button><button id="sizeSettings"><span class="quick-name">📏 大小设置</span><span class="quick-desc">气泡尺寸参数</span></button></div></div><div class="section"><h4>图层</h4><label><input class="check" type="checkbox" checked>原图</label><br><label><input id="showBubble" class="check" type="checkbox" checked>气泡标注</label></div><div class="section"><h4>统计</h4><div class="stat"><div><b id="bubbleCount">0</b>气泡</div><div><b id="markCount">0</b>测量</div></div></div></aside>
-<main class="center"><div class="canvasbar"><span id="fileInfo">未打开图纸</span><span class="right">工具：<b id="toolName">选择</b>　坐标：<b id="coord">—</b></span></div><div id="viewer" class="viewer"><div id="paper" class="paper"><canvas id="canvas"></canvas><div id="overlay" class="overlay"></div></div><div id="empty" class="empty"><strong>打开 PDF 图纸开始工作</strong>支持翻页、气泡标注、PNG、PDF 与打印</div></div></main>
+<main class="center"><div class="canvasbar"><span id="fileInfo">未打开图纸</span><span class="right">工具：<b id="toolName">选择</b> 坐标：<b id="coord">—</b></span></div><div id="viewer" class="viewer"><div id="paper" class="paper"><canvas id="canvas"></canvas><div id="overlay" class="overlay"></div></div><div id="empty" class="empty"><strong>打开 PDF 图纸开始工作</strong>支持翻页、气泡标注、PNG、PDF 与打印</div><!-- 3D 独立视口层 (默认隐藏) --><div id="viewer-3d-container" class="hidden"></div></div></main>
 <aside class="panel"><div class="panel-title">属性 / 标注统计</div><div class="section"><h4>当前标注</h4><div id="prop">未选择对象</div></div><div class="section"><h4>标注列表</h4><div id="annList" class="list"></div></div><div class="section"><h4>保存文件</h4><div class="saved-box"><div class="saved-toolbar"><button id="openSaveFolder">📁 打开目录</button><button id="clearSaved">清除记录</button></div><div id="savedList" class="saved-list"><div class="saved-empty">导出后的 PDF / PNG / CSV 会显示在这里</div></div></div></div><div class="section"><h4>操作说明</h4><div class="note">选择：直接拖动气泡<br>气泡：点击图纸添加<br>Delete / Backspace：删除<br>← / →：翻页<br>+ / -：缩放<br>保存文件卡片：点击即可打开所在目录</div></div></aside></div>
 <footer class="status"><span id="status">就绪</span><span>PDF 标注工作区 · 气泡 / PNG / PDF / 打印</span></footer></div>
 <script>
@@ -45,4 +67,129 @@ function bytesToBase64(bytes){let s='',chunk=0x8000;for(let i=0;i<bytes.length;i
 $('save').onclick=async()=>{if(!pdf||!buf)return alert('请先打开 PDF 图纸');try{setStatus('正在导出 PDF…');const bytes=await buildPdfBytes(),name=sourceName.replace(/\.[^.]+$/i,'')+' - Annotated.pdf';downloadBlob(new Blob([bytes],{type:'application/pdf'}),name);setStatus('PDF 导出完成')}catch(e){console.error(e);alert('PDF 导出失败：'+e.message);setStatus('PDF 导出失败')}};
 $('print').onclick=async()=>{if(!pdf||!buf)return alert('请先打开 PDF 图纸');try{setStatus('正在生成打印 PDF…');const bytes=await buildPdfBytes();if(nativeBridge&&nativeBridge.printPdf){nativeBridge.printPdf(bytesToBase64(bytes),sourceName.replace(/\.[^.]+$/i,'')+' - Print.pdf')}else{const c=await makePageCanvas(pageNo,2),url=c.toDataURL('image/png'),w=window.open('','_blank','width=1000,height=800');if(!w)throw new Error('打印窗口被阻止，请允许弹窗');w.document.write(`<html><body style="margin:0;text-align:center"><img src="${url}" style="max-width:100%" onload="window.print();"></body></html>`);w.document.close()}}catch(e){console.error(e);alert('打印失败：'+e.message);setStatus('打印失败')}};
 $('extractText').onclick=async()=>{if(!pdf)return alert('请先打开 PDF 图纸');try{setStatus('正在提取文字…');let out=[];for(let n=1;n<=pdf.numPages;n++){const p=await pdf.getPage(n),c=await p.getTextContent();out.push(`===== 第 ${n} 页 =====\n`+c.items.map(i=>i.str).join(' '))}downloadBlob(new Blob([out.join('\n\n')],{type:'text/plain;charset=utf-8'}),sourceName.replace(/\.pdf$/i,'')+' - Text.txt');setStatus('文字提取完成')}catch(e){alert('文字提取失败：'+e.message)}};$('exportCsv').onclick=()=>{if(!pdf)return alert('请先打开 PDF 图纸');const rows=[['页码','序号','X%','Y%','圆圈大小','外圈粗细','字号','外圈颜色','内圈颜色','透明填充','字体颜色']];ann.forEach(a=>rows.push([a.page,a.text,(a.nx*100).toFixed(2),(a.ny*100).toFixed(2),a.size,a.border,a.fontSize,a.outerColor,a.innerColor,a.isTransparent?'是':'否',a.fontColor]));const csv='\ufeff'+rows.map(r=>r.map(v=>'"'+String(v).replaceAll('"','""')+'"').join(',')).join('\r\n');downloadBlob(new Blob([csv],{type:'text/csv;charset=utf-8'}),sourceName.replace(/\.pdf$/i,'')+' - Statistics.csv');setStatus('统计 CSV 导出完成')};$('compare').onclick=()=>alert('图纸对比模块已预留，下一步接入第二份 PDF 后进行逐页差异显示。');canvas.addEventListener('mousemove',e=>{const r=canvas.getBoundingClientRect();$('coord').textContent=((e.clientX-r.left)/scale).toFixed(1)+', '+((e.clientY-r.top)/scale).toFixed(1)});renderSavedFiles();updateZoom();updateStats();
-</script></body></html>
+</script>
+
+<!-- 追加：3D 模式控制器逻辑脚本（保持与原脚本完全独立隔离） -->
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { STLLoader } from 'three/addons/loaders/STLLoader.js';
+
+class Web3DViewer {
+    constructor(containerId) {
+        this.container = document.getElementById(containerId);
+        this.scene = new THREE.Scene();
+        this.scene.background = new THREE.Color(0x1e1e1e);
+
+        this.camera = new THREE.PerspectiveCamera(45, this.container.clientWidth / (this.container.clientHeight || 1), 0.1, 2000);
+        this.renderer = new THREE.WebGLRenderer({ antialias: true });
+        this.renderer.setPixelRatio(window.devicePixelRatio);
+        this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
+        this.container.appendChild(this.renderer.domElement);
+
+        this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+        this.controls.enableDamping = true;
+        this.controls.dampingFactor = 0.05;
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+        this.scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(100, 200, 100);
+        this.scene.add(dirLight);
+
+        this.mesh = null;
+        this.animate();
+    }
+
+    loadSTL(arrayBuffer) {
+        const loader = new STLLoader();
+        const geometry = loader.parse(arrayBuffer);
+
+        if (this.mesh) {
+            this.scene.remove(this.mesh);
+            this.mesh.geometry.dispose();
+        }
+
+        geometry.center(); // 强制模型物理中心居中
+        const material = new THREE.MeshStandardMaterial({ color: 0x909090, roughness: 0.3, metalness: 0.3 });
+        this.mesh = new THREE.Mesh(geometry, material);
+        this.scene.add(this.mesh);
+
+        this.resetCameraView();
+    }
+
+    resetCameraView() {
+        if (!this.mesh) return;
+        this.mesh.geometry.computeBoundingSphere();
+        const radius = this.mesh.geometry.boundingSphere.radius;
+        const fov = this.camera.fov * (Math.PI / 180);
+        const distance = Math.abs(radius / Math.sin(fov / 2)) * 1.35;
+
+        this.camera.position.set(distance, distance, distance);
+        this.controls.target.set(0, 0, 0);
+        this.camera.lookAt(0, 0, 0);
+        this.onWindowResize();
+        this.controls.update();
+    }
+
+    onWindowResize() {
+        if (!this.container || this.container.clientWidth === 0) return;
+        this.camera.aspect = this.container.clientWidth / this.container.clientHeight;
+        this.camera.updateProjectionMatrix();
+        this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
+    }
+
+    animate() {
+        requestAnimationFrame(() => this.animate());
+        this.controls.update();
+        this.renderer.render(this.scene, this.camera);
+    }
+}
+
+// 视图模式切换与全局绑定
+window.switchTo2DMode = function() {
+    document.getElementById('paper').style.display = 'block';
+    document.getElementById('viewer-3d-container').classList.add('hidden');
+    document.getElementById('btn-mode-2d').classList.add('active');
+    document.getElementById('btn-mode-3d').classList.remove('active');
+    document.getElementById('group-3d-tools').style.display = 'none';
+    setStatus('已切换至 2D 图纸模式');
+};
+
+window.switchTo3DMode = function() {
+    document.getElementById('paper').style.display = 'none';
+    const container3D = document.getElementById('viewer-3d-container');
+    container3D.classList.remove('hidden');
+
+    document.getElementById('btn-mode-3d').classList.add('active');
+    document.getElementById('btn-mode-2d').classList.remove('active');
+    document.getElementById('group-3d-tools').style.display = 'inline-flex';
+
+    if (!window.viewer3d) {
+        window.viewer3d = new Web3DViewer('viewer-3d-container');
+    }
+
+    setTimeout(() => window.viewer3d.onWindowResize(), 50);
+    setStatus('已切换至 3D 模型模式');
+};
+
+// 本地 STL 加载事件绑定
+document.getElementById('stlFileInput').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+        if (window.viewer3d) {
+            window.viewer3d.loadSTL(evt.target.result);
+            setStatus('已成功载入 3D 模型：' + file.name);
+        }
+    };
+    reader.readAsArrayBuffer(file);
+});
+
+window.addEventListener('resize', () => {
+    if (window.viewer3d) window.viewer3d.onWindowResize();
+});
+</script>
+</body>
+</html>
