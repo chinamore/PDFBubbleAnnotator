@@ -49,7 +49,6 @@ class NativeBridge(QObject):
 
     @pyqtSlot(str, str)
     def printPdf(self, base64Data, fileName):
-        """将网页生成的最终 PDF 交给 Windows 默认 PDF 程序执行系统打印。"""
         try:
             raw = base64.b64decode(base64Data)
             safe_name = Path(fileName or "print.pdf").name
@@ -125,9 +124,10 @@ class PDFBalloonApp(QMainWindow):
         if not ok:
             return
         try:
-            patch = Path(resource_path("web/runtime_fix.js"))
-            if patch.exists():
-                self.page.runJavaScript(patch.read_text(encoding="utf-8"))
+            for filename in ("runtime_fix.js", "feature_suite.js"):
+                patch = Path(resource_path("web")) / filename
+                if patch.exists():
+                    self.page.runJavaScript(patch.read_text(encoding="utf-8"))
         except Exception as e:
             print("runtime fix injection failed:", e)
 
