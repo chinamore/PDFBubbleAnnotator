@@ -34,7 +34,13 @@ jobs:
           $items = @(
             @('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js', "$root\pdf.min.js"),
             @('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js', "$root\pdf.worker.min.js"),
-            @('https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js', "$root\pdf-lib.min.js")
+            @('https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js', "$root\pdf-lib.min.js"),
+            @('https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js', "$root\three.min.js"),
+            @('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js', "$root\OrbitControls.js"),
+            @('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js', "$root\STLLoader.js"),
+            @('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js', "$root\OBJLoader.js"),
+            @('https://cdn.jsdelivr.net/npm/occt-import-js@0.0.23/dist/occt-import-js.js', "$root\occt-import-js.js"),
+            @('https://cdn.jsdelivr.net/npm/occt-import-js@0.0.23/dist/occt-import-js.wasm', "$root\occt-import-js.wasm")
           )
           foreach ($x in $items) {
             Invoke-WebRequest -Uri $x[0] -OutFile $x[1]
@@ -54,7 +60,7 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          foreach ($p in @('web\index.html','web\runtime_fix.js','web\feature_suite.js','web\measurement_suite.js','web\annotation_suite.js','main.py','app.ico','web\vendor\pdf.min.js','web\vendor\pdf.worker.min.js','web\vendor\pdf-lib.min.js','web\vendor\qwebchannel.js')) {
+          foreach ($p in @('web\index.html','web\runtime_fix.js','web\feature_suite.js','web\measurement_suite.js','web\annotation_suite.js','web\local_zoom.js','web\cad_export.js','web\drawing_suite.js','web\3d_cad_suite.js','main.py','app.ico','web\vendor\pdf.min.js','web\vendor\pdf.worker.min.js','web\vendor\pdf-lib.min.js','web\vendor\qwebchannel.js','web\vendor\three.min.js','web\vendor\OrbitControls.js','web\vendor\STLLoader.js','web\vendor\OBJLoader.js','web\vendor\occt-import-js.js','web\vendor\occt-import-js.wasm')) {
             if (-not (Test-Path $p)) { throw "Required source/dependency missing: $p" }
           }
           python -m py_compile main.py
@@ -62,6 +68,10 @@ jobs:
           node --check web\measurement_suite.js
           node --check web\annotation_suite.js
           node --check web\runtime_fix.js
+          node --check web\local_zoom.js
+          node --check web\cad_export.js
+          node --check web\drawing_suite.js
+          node --check web\3d_cad_suite.js
       - name: Build single EXE
         shell: pwsh
         run: |
