@@ -34,7 +34,6 @@ jobs:
           $ErrorActionPreference = 'Stop'
           $root = 'web\vendor'
           New-Item -ItemType Directory -Force -Path $root | Out-Null
-
           $items = @(
             @('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js', "$root\pdf.min.js"),
             @('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js', "$root\pdf.worker.min.js"),
@@ -44,9 +43,6 @@ jobs:
             Invoke-WebRequest -Uri $x[0] -OutFile $x[1]
             if ((Get-Item $x[1]).Length -lt 1000) { throw "Invalid dependency: $($x[1])" }
           }
-
-          # Qt's cgit plain endpoint stopped returning the JS source reliably.
-          # Vendor the exact Qt 6.8.3 WebChannel source from the official release archive.
           $qtZip = Join-Path $env:RUNNER_TEMP 'qtwebchannel-6.8.3.zip'
           $qtExtract = Join-Path $env:RUNNER_TEMP 'qtwebchannel-6.8.3'
           Invoke-WebRequest -Uri 'https://download.qt.io/official_releases/qt/6.8/6.8.3/submodules/qtwebchannel-everywhere-src-6.8.3.zip' -OutFile $qtZip
@@ -62,14 +58,13 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          if (-not (Test-Path 'web\index.html')) { throw 'web/index.html missing' }
-          if (-not (Test-Path 'main.py')) { throw 'main.py missing' }
-          if (-not (Test-Path 'app.ico')) { throw 'app.ico missing' }
-          if (-not (Test-Path 'web\vendor\pdf.min.js')) { throw 'pdf.min.js missing' }
-          if (-not (Test-Path 'web\vendor\pdf.worker.min.js')) { throw 'pdf.worker.min.js missing' }
-          if (-not (Test-Path 'web\vendor\pdf-lib.min.js')) { throw 'pdf-lib.min.js missing' }
-          if (-not (Test-Path 'web\vendor\qwebchannel.js')) { throw 'qwebchannel.js missing' }
+          foreach ($p in @('web\index.html','web\runtime_fix.js','web\feature_suite.js','web\measurement_suite.js','main.py','app.ico','web\vendor\pdf.min.js','web\vendor\pdf.worker.min.js','web\vendor\pdf-lib.min.js','web\vendor\qwebchannel.js')) {
+            if (-not (Test-Path $p)) { throw "Required source/dependency missing: $p" }
+          }
           python -m py_compile main.py
+          node --check web\feature_suite.js
+          node --check web\measurement_suite.js
+          node --check web\runtime_fix.js
 
       - name: Build single EXE
         shell: pwsh
