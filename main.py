@@ -124,7 +124,7 @@ class PDFBalloonApp(QMainWindow):
         if not ok:
             return
         try:
-            for filename in ("runtime_fix.js", "feature_suite.js"):
+            for filename in ("runtime_fix.js", "feature_suite.js", "measurement_suite.js"):
                 patch = Path(resource_path("web")) / filename
                 if patch.exists():
                     self.page.runJavaScript(patch.read_text(encoding="utf-8"))
