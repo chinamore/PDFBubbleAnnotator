@@ -58,7 +58,7 @@ class PDFBalloonApp(QMainWindow):
     def _inject_runtime_fix(self,ok):
         if not ok:return
         try:
-            for filename in ("runtime_fix.js","feature_suite.js","measurement_suite.js","annotation_suite.js","local_zoom.js","cad_export.js","drawing_suite.js","3d_cad_suite.js"):
+            for filename in ("runtime_fix.js","feature_suite.js","measurement_suite.js","annotation_suite.js","local_zoom.js","cad_export.js","drawing_suite.js","3d_cad_suite.js","3d_advanced.js"):
                 patch=Path(resource_path("web"))/filename
                 if patch.exists():self.page.runJavaScript(patch.read_text(encoding="utf-8"))
         except Exception as e:print("runtime fix injection failed:",e)
