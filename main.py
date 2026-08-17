@@ -87,17 +87,14 @@ class PDFBalloonApp(QMainWindow):
         self.resize(1400, 900)
         self.current_file_path = ""
         self.current_dir = ""
-
         icon = resource_path("app.ico")
         if os.path.exists(icon):
             self.setWindowIcon(QIcon(icon))
-
         self.profile = QWebEngineProfile(self)
         self.profile.setHttpCacheType(QWebEngineProfile.HttpCacheType.NoCache)
         self.profile.setPersistentCookiesPolicy(QWebEngineProfile.PersistentCookiesPolicy.NoPersistentCookies)
         self.profile.clearHttpCache()
         self.profile.clearAllVisitedLinks()
-
         self.page = QWebEnginePage(self.profile, self)
         self.browser = QWebEngineView(self)
         self.browser.setPage(self.page)
@@ -105,14 +102,12 @@ class PDFBalloonApp(QMainWindow):
         settings.setAttribute(QWebEngineSettings.WebAttribute.LocalContentCanAccessFileUrls, True)
         settings.setAttribute(QWebEngineSettings.WebAttribute.LocalContentCanAccessRemoteUrls, False)
         settings.setAttribute(QWebEngineSettings.WebAttribute.LocalStorageEnabled, False)
-
         self.channel = QWebChannel(self.page)
         self.bridge = NativeBridge(self)
         self.channel.registerObject("nativeBridge", self.bridge)
         self.page.setWebChannel(self.channel)
         self.profile.downloadRequested.connect(self._on_download_requested)
         self.page.loadFinished.connect(self._inject_runtime_fix)
-
         index = Path(resource_path("web/index.html")).resolve()
         if not index.exists():
             QMessageBox.critical(self, "启动失败", f"找不到界面文件：{index}")
@@ -124,7 +119,7 @@ class PDFBalloonApp(QMainWindow):
         if not ok:
             return
         try:
-            for filename in ("runtime_fix.js", "feature_suite.js", "measurement_suite.js"):
+            for filename in ("runtime_fix.js", "feature_suite.js", "measurement_suite.js", "annotation_suite.js"):
                 patch = Path(resource_path("web")) / filename
                 if patch.exists():
                     self.page.runJavaScript(patch.read_text(encoding="utf-8"))
