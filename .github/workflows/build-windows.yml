@@ -13,21 +13,18 @@ jobs:
     runs-on: windows-2022
     steps:
       - uses: actions/checkout@v4
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
           architecture: x64
           cache: pip
-
       - name: Install Python build dependencies
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-
       - name: Vendor browser libraries for offline runtime
         shell: pwsh
         run: |
@@ -53,19 +50,18 @@ jobs:
           if ($null -eq $qwc) { throw 'qwebchannel.js was not found in Qt WebChannel archive' }
           Copy-Item $qwc.FullName "$root\qwebchannel.js" -Force
           if ((Get-Item "$root\qwebchannel.js").Length -lt 10000) { throw 'Invalid qwebchannel.js' }
-
       - name: Validate source files
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          foreach ($p in @('web\index.html','web\runtime_fix.js','web\feature_suite.js','web\measurement_suite.js','main.py','app.ico','web\vendor\pdf.min.js','web\vendor\pdf.worker.min.js','web\vendor\pdf-lib.min.js','web\vendor\qwebchannel.js')) {
+          foreach ($p in @('web\index.html','web\runtime_fix.js','web\feature_suite.js','web\measurement_suite.js','web\annotation_suite.js','main.py','app.ico','web\vendor\pdf.min.js','web\vendor\pdf.worker.min.js','web\vendor\pdf-lib.min.js','web\vendor\qwebchannel.js')) {
             if (-not (Test-Path $p)) { throw "Required source/dependency missing: $p" }
           }
           python -m py_compile main.py
           node --check web\feature_suite.js
           node --check web\measurement_suite.js
+          node --check web\annotation_suite.js
           node --check web\runtime_fix.js
-
       - name: Build single EXE
         shell: pwsh
         run: |
@@ -82,7 +78,6 @@ jobs:
           $size = (Get-Item 'dist\PDFBubbleAnnotator.exe').Length
           Write-Host "Single EXE size: $size bytes"
           if ($size -lt 20000000) { throw 'EXE is unexpectedly small; WebEngine was probably not bundled' }
-
       - name: Verify packaged executable
         shell: pwsh
         run: |
@@ -92,7 +87,6 @@ jobs:
           if ($bytes[0] -ne 77 -or $bytes[1] -ne 90) { throw 'Output is not a Windows PE executable' }
           Write-Host 'PE header verification passed'
           Write-Host 'Single-file PyQt6/QtWebEngine executable created.'
-
       - name: Upload single EXE artifact
         uses: actions/upload-artifact@v4
         with:
