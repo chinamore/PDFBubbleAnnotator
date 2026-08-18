@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Patch index.html
+      - name: Patch viewer integration
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -22,11 +22,19 @@ jobs:
           if marker not in s:
               s=s.replace('</body>', marker+'\n</body>')
           p.write_text(s,encoding='utf-8')
+          
+          f=Path('web/formats.js')
+          t=f.read_text(encoding='utf-8')
+          old="const p=$('paper');p.innerHTML='';p.appendChild(document.importNode(svg,true));$('overlay').remove?.();"
+          new="const p=$('paper');p.innerHTML='';p.appendChild(document.importNode(svg,true));const ov=document.createElement('div');ov.id='overlay';ov.className='overlay';p.appendChild(ov);"
+          if old in t:
+              t=t.replace(old,new)
+          f.write_text(t,encoding='utf-8')
           PY
       - name: Commit integration
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add web/index.html
-          git diff --cached --quiet || git commit -m 'Enable PDF image DXF and DWG file selection'
+          git add web/index.html web/formats.js
+          git diff --cached --quiet || git commit -m 'Preserve overlay for CAD file annotations'
           git push
