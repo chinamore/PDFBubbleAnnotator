@@ -93,7 +93,7 @@ This notice is included with the packaged runtime. Review GPL-3.0 obligations be
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          foreach ($p in @('web\index.html','web\formats.js','web\runtime_fix.js','web\feature_suite.js','web\measurement_suite.js','web\annotation_suite.js','web\local_zoom.js','web\cad_export.js','web\drawing_suite.js','web\3d_cad_suite.js','main.py','app.ico','web\vendor\pdf.min.js','web\vendor\pdf.worker.min.js','web\vendor\pdf-lib.min.js','web\vendor\qwebchannel.js','web\vendor\three.min.js','web\vendor\OrbitControls.js','web\vendor\STLLoader.js','web\vendor\OBJLoader.js','web\vendor\occt-import-js.js','web\vendor\occt-import-js.wasm','web\vendor\libredwg\dist\index.js','web\vendor\libredwg\wasm\libredwg.wasm','web\vendor\libredwg\LICENSE-NOTICE.txt')) {
+          foreach ($p in @('web\index.html','web\formats.js','web\runtime_fix.js','web\feature_suite.js','web\measurement_suite.js','web\annotation_suite.js','web\local_zoom.js','web\cad_export.js','web\drawing_suite.js','web\3d_cad_suite.js','web\3d_advanced.js','web\sketcher.js','web\freecad_shell.js','web\freecad_sketcher_workbench.js','web\freecad_sketcher_bridge.js','main.py','app.ico','web\vendor\pdf.min.js','web\vendor\pdf.worker.min.js','web\vendor\pdf-lib.min.js','web\vendor\qwebchannel.js','web\vendor\three.min.js','web\vendor\OrbitControls.js','web\vendor\STLLoader.js','web\vendor\OBJLoader.js','web\vendor\occt-import-js.js','web\vendor\occt-import-js.wasm','web\vendor\libredwg\dist\index.js','web\vendor\libredwg\wasm\libredwg.wasm','web\vendor\libredwg\LICENSE-NOTICE.txt')) {
             if (-not (Test-Path $p)) { throw "Required source/dependency missing: $p" }
           }
           python -m py_compile main.py
@@ -106,6 +106,11 @@ This notice is included with the packaged runtime. Review GPL-3.0 obligations be
           node --check web\cad_export.js
           node --check web\drawing_suite.js
           node --check web\3d_cad_suite.js
+          node --check web\3d_advanced.js
+          node --check web\sketcher.js
+          node --check web\freecad_shell.js
+          node --check web\freecad_sketcher_workbench.js
+          node --check web\freecad_sketcher_bridge.js
       - name: Build single EXE
         shell: pwsh
         run: |
