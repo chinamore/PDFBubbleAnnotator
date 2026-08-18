@@ -19,7 +19,7 @@ class NativeBridge(QObject):
     def __init__(self,window):super().__init__();self.window=window
     @pyqtSlot()
     def selectPdfFile(self):
-        start=self.window.current_dir or str(Path.home());path,_=QFileDialog.getOpenFileName(self.window,"选择 PDF 图纸文件",start,"PDF Files (*.pdf)")
+        start=self.window.current_dir or str(Path.home());path,_=QFileDialog.getOpenFileName(self.window,"选择图纸文件",start,"CAD/PDF/Image Files (*.pdf *.dxf *.dwg *.png *.jpg *.jpeg *.webp *.bmp *.svg)")
         if not path:return
         self.window.current_file_path=path;self.window.current_dir=str(Path(path).parent)
         encoded=base64.b64encode(Path(path).read_bytes()).decode("ascii");name=Path(path).name.replace("\\","\\\\").replace("'","\\'")
@@ -58,7 +58,7 @@ class PDFBalloonApp(QMainWindow):
     def _inject_runtime_fix(self,ok):
         if not ok:return
         try:
-            for filename in ("runtime_fix.js","feature_suite.js","measurement_suite.js","annotation_suite.js","local_zoom.js","cad_export.js","drawing_suite.js","3d_cad_suite.js","3d_advanced.js","sketcher_restore.js"):
+            for filename in ("runtime_fix.js","feature_suite.js","measurement_suite.js","annotation_suite.js","local_zoom.js","cad_export.js","drawing_suite.js","3d_cad_suite.js","3d_advanced.js","sketcher_restore.js","freecad_shell.js"):
                 patch=Path(resource_path("web"))/filename
                 if patch.exists():self.page.runJavaScript(patch.read_text(encoding="utf-8"))
         except Exception as e:print("runtime fix injection failed:",e)
