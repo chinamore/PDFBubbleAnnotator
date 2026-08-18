@@ -49,6 +49,16 @@ jobs:
             Invoke-WebRequest -Uri $x[0] -OutFile $x[1]
             if ((Get-Item $x[1]).Length -lt 1000) { throw "Invalid dependency: $($x[1])" }
           }
+          $qtZip = Join-Path $env:RUNNER_TEMP 'qtwebchannel-6.8.3.zip'
+          $qtExtract = Join-Path $env:RUNNER_TEMP 'qtwebchannel-6.8.3'
+          Invoke-WebRequest -Uri 'https://download.qt.io/official_releases/qt/6.8/6.8.3/submodules/qtwebchannel-everywhere-src-6.8.3.zip' -OutFile $qtZip
+          if ((Get-Item $qtZip).Length -lt 100000) { throw 'Qt WebChannel archive download is invalid' }
+          if (Test-Path $qtExtract) { Remove-Item $qtExtract -Recurse -Force }
+          Expand-Archive -Path $qtZip -DestinationPath $qtExtract -Force
+          $qwc = Get-ChildItem -Path $qtExtract -Filter 'qwebchannel.js' -File -Recurse | Select-Object -First 1
+          if ($null -eq $qwc) { throw 'qwebchannel.js was not found in Qt WebChannel archive' }
+          Copy-Item $qwc.FullName "$root\qwebchannel.js" -Force
+          if ((Get-Item "$root\qwebchannel.js").Length -lt 10000) { throw 'Invalid qwebchannel.js' }
       - name: Vendor LibreDWG WebAssembly for offline DWG
         shell: pwsh
         run: |
@@ -79,12 +89,11 @@ https://github.com/mlightcad/libredwg-web
 
 This notice is included with the packaged runtime. Review GPL-3.0 obligations before redistribution.
 '@ | Set-Content -Encoding UTF8 "$dst\LICENSE-NOTICE.txt"
-          Write-Host 'LibreDWG offline runtime bundled with license notice.'
       - name: Validate source files
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          foreach ($p in @('web\index.html','web\formats.js','web\runtime_fix.js','web\feature_suite.js','web\measurement_suite.js','web\annotation_suite.js','web\local_zoom.js','web\cad_export.js','web\drawing_suite.js','web\3d_cad_suite.js','main.py','app.ico','web\vendor\pdf.min.js','web\vendor\pdf.worker.min.js','web\vendor\pdf-lib.min.js','web\vendor\three.min.js','web\vendor\OrbitControls.js','web\vendor\STLLoader.js','web\vendor\OBJLoader.js','web\vendor\occt-import-js.js','web\vendor\occt-import-js.wasm','web\vendor\libredwg\dist\index.js','web\vendor\libredwg\wasm\libredwg.wasm','web\vendor\libredwg\LICENSE-NOTICE.txt')) {
+          foreach ($p in @('web\index.html','web\formats.js','web\runtime_fix.js','web\feature_suite.js','web\measurement_suite.js','web\annotation_suite.js','web\local_zoom.js','web\cad_export.js','web\drawing_suite.js','web\3d_cad_suite.js','main.py','app.ico','web\vendor\pdf.min.js','web\vendor\pdf.worker.min.js','web\vendor\pdf-lib.min.js','web\vendor\qwebchannel.js','web\vendor\three.min.js','web\vendor\OrbitControls.js','web\vendor\STLLoader.js','web\vendor\OBJLoader.js','web\vendor\occt-import-js.js','web\vendor\occt-import-js.wasm','web\vendor\libredwg\dist\index.js','web\vendor\libredwg\wasm\libredwg.wasm','web\vendor\libredwg\LICENSE-NOTICE.txt')) {
             if (-not (Test-Path $p)) { throw "Required source/dependency missing: $p" }
           }
           python -m py_compile main.py
@@ -111,7 +120,6 @@ This notice is included with the packaged runtime. Review GPL-3.0 obligations be
             main.py
           if (-not (Test-Path 'dist\PDFBubbleAnnotator.exe')) { throw 'EXE was not produced' }
           $size = (Get-Item 'dist\PDFBubbleAnnotator.exe').Length
-          Write-Host "Single EXE size: $size bytes"
           if ($size -lt 20000000) { throw 'EXE is unexpectedly small; WebEngine was probably not bundled' }
       - name: Verify packaged executable
         shell: pwsh
