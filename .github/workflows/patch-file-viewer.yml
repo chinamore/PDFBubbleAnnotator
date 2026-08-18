@@ -1,0 +1,32 @@
+name: Integrate file format viewer
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch index.html
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('web/index.html')
+          s=p.read_text(encoding='utf-8')
+          s=s.replace('<input id="file" type="file" accept="application/pdf" class="hidden">','<input id="file" type="file" accept=".pdf,.dxf,.dwg,image/*" class="hidden">')
+          marker='<script src="./formats.js"></script>'
+          if marker not in s:
+              s=s.replace('</body>', marker+'\n</body>')
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Commit integration
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add web/index.html
+          git diff --cached --quiet || git commit -m 'Enable PDF image DXF and DWG file selection'
+          git push
