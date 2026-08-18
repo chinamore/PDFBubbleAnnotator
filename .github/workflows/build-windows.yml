@@ -13,6 +13,10 @@ jobs:
     runs-on: windows-2022
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -56,14 +60,36 @@ jobs:
           if ($null -eq $qwc) { throw 'qwebchannel.js was not found in Qt WebChannel archive' }
           Copy-Item $qwc.FullName "$root\qwebchannel.js" -Force
           if ((Get-Item "$root\qwebchannel.js").Length -lt 10000) { throw 'Invalid qwebchannel.js' }
+      - name: Vendor LibreDWG WebAssembly for offline DWG
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $tmp = Join-Path $env:RUNNER_TEMP 'libredwg'
+          if (Test-Path $tmp) { Remove-Item $tmp -Recurse -Force }
+          New-Item -ItemType Directory -Force -Path $tmp | Out-Null
+          Push-Location $tmp
+          npm pack @mlightcad/libredwg-web@0.7.9
+          $tgz = Get-ChildItem -Filter '*.tgz' | Select-Object -First 1
+          if ($null -eq $tgz) { throw 'LibreDWG npm package was not downloaded' }
+          tar -xzf $tgz.FullName
+          Pop-Location
+          $pkg = Join-Path $tmp 'package'
+          if (-not (Test-Path (Join-Path $pkg 'dist\index.js'))) { throw 'LibreDWG dist/index.js missing' }
+          if (-not (Test-Path (Join-Path $pkg 'wasm\libredwg.wasm'))) { throw 'LibreDWG WASM missing' }
+          $dst = 'web\vendor\libredwg'
+          New-Item -ItemType Directory -Force -Path $dst | Out-Null
+          Copy-Item (Join-Path $pkg 'dist') (Join-Path $dst 'dist') -Recurse -Force
+          Copy-Item (Join-Path $pkg 'wasm') (Join-Path $dst 'wasm') -Recurse -Force
+          Write-Host 'LibreDWG offline runtime bundled.'
       - name: Validate source files
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          foreach ($p in @('web\index.html','web\runtime_fix.js','web\feature_suite.js','web\measurement_suite.js','web\annotation_suite.js','web\local_zoom.js','web\cad_export.js','web\drawing_suite.js','web\3d_cad_suite.js','main.py','app.ico','web\vendor\pdf.min.js','web\vendor\pdf.worker.min.js','web\vendor\pdf-lib.min.js','web\vendor\qwebchannel.js','web\vendor\three.min.js','web\vendor\OrbitControls.js','web\vendor\STLLoader.js','web\vendor\OBJLoader.js','web\vendor\occt-import-js.js','web\vendor\occt-import-js.wasm')) {
+          foreach ($p in @('web\index.html','web\formats.js','web\runtime_fix.js','web\feature_suite.js','web\measurement_suite.js','web\annotation_suite.js','web\local_zoom.js','web\cad_export.js','web\drawing_suite.js','web\3d_cad_suite.js','main.py','app.ico','web\vendor\pdf.min.js','web\vendor\pdf.worker.min.js','web\vendor\pdf-lib.min.js','web\vendor\qwebchannel.js','web\vendor\three.min.js','web\vendor\OrbitControls.js','web\vendor\STLLoader.js','web\vendor\OBJLoader.js','web\vendor\occt-import-js.js','web\vendor\occt-import-js.wasm','web\vendor\libredwg\dist\index.js','web\vendor\libredwg\wasm\libredwg.wasm')) {
             if (-not (Test-Path $p)) { throw "Required source/dependency missing: $p" }
           }
           python -m py_compile main.py
+          node --check web\formats.js
           node --check web\feature_suite.js
           node --check web\measurement_suite.js
           node --check web\annotation_suite.js
