@@ -1,59 +1,32 @@
-/* File format viewer: PDF + raster images + ASCII DXF. */
+/* File format viewer: PDF + raster images + ASCII DXF + LibreDWG DWG path. */
 (function(){
-  'use strict';
-  const $=id=>document.getElementById(id);
-  const state={mode:'pdf',file:null,dxf:null,img:null,zoom:1,offsetX:0,offsetY:0,drag:false,lastX:0,lastY:0};
-  const imageTypes=new Set(['image/png','image/jpeg','image/jpg','image/webp','image/bmp','image/gif','image/svg+xml']);
-  const ext=f=>(f.name.split('.').pop()||'').toLowerCase();
-  function status(t){if($('status')) $('status').textContent=t;}
-  function clearViewer(){
-    const c=$('canvas'),ctx=c.getContext('2d');
-    ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,c.width,c.height);
-    $('overlay').innerHTML=''; $('empty').classList.add('hidden');
-  }
-  function fitCanvas(w,h){
-    const v=$('viewer'); const pad=48; const aw=Math.max(320,v.clientWidth-pad), ah=Math.max(240,v.clientHeight-pad-34);
-    state.zoom=Math.min(aw/w,ah/h,1); if(!isFinite(state.zoom)||state.zoom<=0)state.zoom=1;
-    state.offsetX=state.offsetY=0; draw();
-  }
-  function setCanvasSize(w,h){const c=$('canvas');c.width=Math.max(1,Math.ceil(w));c.height=Math.max(1,Math.ceil(h));c.style.width=Math.ceil(w)+'px';c.style.height=Math.ceil(h)+'px';$('paper').style.width=Math.ceil(w)+'px';$('paper').style.height=Math.ceil(h)+'px';}
-  function drawImage(){
-    const im=state.img; const w=Math.max(1,Math.round(im.naturalWidth*state.zoom)),h=Math.max(1,Math.round(im.naturalHeight*state.zoom));
-    setCanvasSize(w,h);const ctx=$('canvas').getContext('2d');ctx.clearRect(0,0,w,h);ctx.drawImage(im,0,0,w,h);$('zoomInfo').textContent=Math.round(state.zoom*100)+'%';
-  }
-  function parseDxf(text){
-    const a=text.replace(/\r/g,'').split('\n');const pairs=[];for(let i=0;i+1<a.length;i+=2)pairs.push([a[i].trim(),a[i+1]]);
-    const ents=[];let inEnt=false,type='';let e={};
-    function flush(){if(type){e.type=type;ents.push(e);}type='';e={};}
-    for(const [code,val] of pairs){
-      if(code==='0'){
-        if(val.trim()==='SECTION'){inEnt=false;continue} if(val.trim()==='ENDSEC'){flush();inEnt=false;continue}
-        if(val.trim()==='ENTITIES'){inEnt=true;continue} if(val.trim()==='ENDSEC'||val.trim()==='EOF'){flush();inEnt=false;continue}
-        if(inEnt){flush();type=val.trim().toUpperCase();}
-        continue;
-      }
-      if(!inEnt)continue;
-      const n=Number(val); const v=Number.isFinite(n)?n:val;
-      if(code==='8')e.layer=String(val).trim();
-      else if(code==='10'){if(type==='LINE'||type==='CIRCLE'||type==='ARC'||type==='POINT'||type==='TEXT'||type==='MTEXT')e.x=Number(val);else if(type==='LWPOLYLINE'){e.xs=e.xs||[];e.xs.push(Number(val));}}
-      else if(code==='20'){if(type==='LWPOLYLINE'){e.ys=e.ys||[];e.ys.push(Number(val));}else e.y=Number(val);}
-      else if(code==='11')e.x2=Number(val); else if(code==='21')e.y2=Number(val);
-      else if(code==='40')e.r=Number(val); else if(code==='50')e.a1=Number(val); else if(code==='51')e.a2=Number(val);
-      else if(code==='1')e.text=String(val); else if(code==='70')e.flags=Number(val);
-    }
-    flush();return ents.filter(e=>e.type==='LINE'||e.type==='CIRCLE'||e.type==='ARC'||e.type==='LWPOLYLINE'||e.type==='TEXT'||e.type==='MTEXT');
-  }
-  function dxfBounds(ents){let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;const add=(x,y)=>{if(Number.isFinite(x)&&Number.isFinite(y)){minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y);}};for(const e of ents){if(e.type==='LWPOLYLINE'){(e.xs||[]).forEach((x,i)=>add(x,(e.ys||[])[i]));}else if(e.type==='LINE'){add(e.x,e.y);add(e.x2,e.y2);}else{add(e.x,e.y);if(e.r){add(e.x-e.r,e.y-e.r);add(e.x+e.r,e.y+e.r);}}}if(!isFinite(minX))return {minX:0,minY:0,maxX:100,maxY:100};return {minX,minY,maxX,maxY};}
-  function drawDxf(){
-    const ents=state.dxf.entities,b=state.dxf.bounds;const vw=Math.max(500,$('viewer').clientWidth-48),vh=Math.max(400,$('viewer').clientHeight-70);const sx=vw/Math.max(1,b.maxX-b.minX),sy=vh/Math.max(1,b.maxY-b.minY);const s=Math.min(sx,sy)*state.zoom;const w=Math.max(400,Math.ceil((b.maxX-b.minX)*s+40)),h=Math.max(300,Math.ceil((b.maxY-b.minY)*s+40));setCanvasSize(w,h);const ctx=$('canvas').getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,w,h);ctx.strokeStyle='#111827';ctx.fillStyle='#111827';ctx.lineWidth=Math.max(1,1.2*state.zoom);const X=x=>(x-b.minX)*s+20,Y=y=>h-((y-b.minY)*s+20);for(const e of ents){ctx.beginPath();if(e.type==='LINE'){ctx.moveTo(X(e.x),Y(e.y));ctx.lineTo(X(e.x2),Y(e.y2));ctx.stroke();}else if(e.type==='CIRCLE'){ctx.arc(X(e.x),Y(e.y),Math.abs(e.r*s),0,Math.PI*2);ctx.stroke();}else if(e.type==='ARC'){let a1=(e.a1||0)*Math.PI/180,a2=(e.a2||360)*Math.PI/180;ctx.arc(X(e.x),Y(e.y),Math.abs(e.r*s),-a1,-a2,true);ctx.stroke();}else if(e.type==='LWPOLYLINE'){let xs=e.xs||[],ys=e.ys||[];if(xs.length){ctx.moveTo(X(xs[0]),Y(ys[0]));for(let i=1;i<xs.length;i++)ctx.lineTo(X(xs[i]),Y(ys[i]));if((e.flags&1)===1)ctx.closePath();ctx.stroke();} }else if(e.type==='TEXT'||e.type==='MTEXT'){ctx.font=Math.max(10,12*state.zoom)+'px Segoe UI';ctx.fillText(String(e.text||''),X(e.x),Y(e.y));}}
-    $('zoomInfo').textContent=Math.round(state.zoom*100)+'%';
-  }
-  async function openImage(file){
-    const url=URL.createObjectURL(file),im=new Image();im.onload=()=>{state.mode='image';state.file=file;state.img=im;state.dxf=null;clearViewer();$('fileInfo').textContent=file.name+' · '+im.naturalWidth+'×'+im.naturalHeight;$('pageCount').textContent='1';$('pageInput').value='1';fitCanvas(im.naturalWidth,im.naturalHeight);status('已打开图片：'+file.name);URL.revokeObjectURL(url)};im.onerror=()=>{URL.revokeObjectURL(url);status('图片解码失败：'+file.name)};im.src=url;
-  }
-  async function openDxf(file){const text=await file.text();if(!/\bSECTION\b|\bENTITIES\b/i.test(text)){status('DXF 文件不是可读取的 ASCII DXF；二进制 DXF 不支持');return}const entities=parseDxf(text);state.mode='dxf';state.file=file;state.dxf={entities,bounds:dxfBounds(entities)};state.img=null;clearViewer();$('fileInfo').textContent=file.name+' · DXF · '+entities.length+' 个实体';$('pageCount').textContent='1';$('pageInput').value='1';state.zoom=1;drawDxf();status('已打开 DXF：'+file.name+'（基础矢量实体）')}
-  function openDwg(file){state.mode='dwg';state.file=file;clearViewer();$('fileInfo').textContent=file.name+' · DWG';$('empty').classList.remove('hidden');$('empty').innerHTML='<strong>DWG 文件已识别</strong><div style="margin-top:10px">当前离线版尚未内置 DWG 二进制解析引擎。请先转换为 DXF，或接入 LibreDWG/ODA 等解析器后再直接打开。</div>';status('已识别 DWG，但当前版本没有 DWG 二进制解析器');}
-  function openAny(file){if(!file)return;const e=ext(file);if(file.type.startsWith('image/')||imageTypes.has(file.type)||['png','jpg','jpeg','webp','bmp','gif','svg'].includes(e))return openImage(file);if(e==='dxf')return openDxf(file);if(e==='dwg')return openDwg(file);if(e==='pdf')return window.openPdf(file);status('暂不支持的文件格式：'+e)}
-  function install(){const input=$('file'),btn=$('openBtn');if(!input||!btn)return;input.accept='.pdf,.dxf,.dwg,image/*';btn.onclick=()=>input.click();input.onchange=()=>{const f=input.files&&input.files[0];input.value='';openAny(f)};$('zoomIn').addEventListener('click',()=>{if(state.mode==='image'||state.mode==='dxf'){state.zoom=Math.min(8,state.zoom*1.2);state.mode==='image'?drawImage():drawDxf()}});$('zoomOut').addEventListener('click',()=>{if(state.mode==='image'||state.mode==='dxf'){state.zoom=Math.max(.1,state.zoom/1.2);state.mode==='image'?drawImage():drawDxf()}});$('zoomFit').addEventListener('click',()=>{if(state.mode==='image'&&state.img)fitCanvas(state.img.naturalWidth,state.img.naturalHeight);else if(state.mode==='dxf'&&state.dxf){state.zoom=1;drawDxf()}});$('prev').addEventListener('click',()=>{if(state.mode!=='pdf')status('图片/DXF 为单页图纸')});$('next').addEventListener('click',()=>{if(state.mode!=='pdf')status('图片/DXF 为单页图纸')});window.openAnyFile=openAny;}
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install);else install();
+'use strict';
+const $=id=>document.getElementById(id);
+const state={mode:'pdf',file:null,dxf:null,img:null,svg:null,zoom:1};
+const imageTypes=new Set(['image/png','image/jpeg','image/jpg','image/webp','image/bmp','image/gif','image/svg+xml']);
+const ext=f=>(f.name.split('.').pop()||'').toLowerCase();
+function status(t){if($('status'))$('status').textContent=t}
+function clearViewer(){const p=$('paper');p.innerHTML='<canvas id="canvas"></canvas><div id="overlay" class="overlay"></div>'; $('empty').classList.add('hidden')}
+function setCanvasSize(w,h){const c=$('canvas');c.width=Math.max(1,Math.ceil(w));c.height=Math.max(1,Math.ceil(h));c.style.width=Math.ceil(w)+'px';c.style.height=Math.ceil(h)+'px';$('paper').style.width=Math.ceil(w)+'px';$('paper').style.height=Math.ceil(h)+'px'}
+function fitCanvas(w,h){const v=$('viewer'),aw=Math.max(320,v.clientWidth-48),ah=Math.max(240,v.clientHeight-70);state.zoom=Math.min(aw/w,ah/h,1);if(!isFinite(state.zoom)||state.zoom<=0)state.zoom=1;drawCurrent()}
+function drawImage(){const im=state.img,w=Math.max(1,Math.round(im.naturalWidth*state.zoom)),h=Math.max(1,Math.round(im.naturalHeight*state.zoom));setCanvasSize(w,h);$('canvas').getContext('2d').drawImage(im,0,0,w,h);$('zoomInfo').textContent=Math.round(state.zoom*100)+'%'}
+function parseDxf(text){const a=text.replace(/\r/g,'').split('\n'),ents=[];let inEnt=false,type='',e={};function flush(){if(type)ents.push({...e,type});type='';e={}}for(let i=0;i+1<a.length;i+=2){const code=a[i].trim(),val=a[i+1];if(code==='0'){const t=val.trim().toUpperCase();if(t==='ENTITIES'){inEnt=true;continue}if(t==='ENDSEC'||t==='EOF'){flush();inEnt=false;continue}if(inEnt)flush(),type=t;continue}if(!inEnt)continue;if(code==='8')e.layer=val.trim();else if(code==='10'){if(type==='LWPOLYLINE'){(e.xs??=[]).push(+val)}else e.x=+val}else if(code==='20'){if(type==='LWPOLYLINE'){(e.ys??=[]).push(+val)}else e.y=+val}else if(code==='11')e.x2=+val;else if(code==='21')e.y2=+val;else if(code==='40')e.r=+val;else if(code==='50')e.a1=+val;else if(code==='51')e.a2=+val;else if(code==='1')e.text=val;else if(code==='70')e.flags=+val}flush();return ents.filter(e=>['LINE','CIRCLE','ARC','LWPOLYLINE','TEXT','MTEXT'].includes(e.type))}
+function dxfBounds(es){let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;const add=(x,y)=>{if(Number.isFinite(x)&&Number.isFinite(y)){minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y)}};for(const e of es){if(e.type==='LINE'){add(e.x,e.y);add(e.x2,e.y2)}else if(e.type==='LWPOLYLINE'){(e.xs||[]).forEach((x,i)=>add(x,(e.ys||[])[i]))}else{add(e.x,e.y);if(e.r){add(e.x-e.r,e.y-e.r);add(e.x+e.r,e.y+e.r)}}}return isFinite(minX)?{minX,minY,maxX,maxY}:{minX:0,minY:0,maxX:100,maxY:100}}
+function drawDxf(){const es=state.dxf.entities,b=state.dxf.bounds,vw=Math.max(500,$('viewer').clientWidth-48),vh=Math.max(400,$('viewer').clientHeight-70),s=Math.min(vw/Math.max(1,b.maxX-b.minX),vh/Math.max(1,b.maxY-b.minY))*state.zoom,w=Math.max(400,(b.maxX-b.minX)*s+40),h=Math.max(300,(b.maxY-b.minY)*s+40);setCanvasSize(w,h);const c=$('canvas'),ctx=c.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,w,h);ctx.strokeStyle='#111827';ctx.fillStyle='#111827';ctx.lineWidth=Math.max(1,1.2*state.zoom);const X=x=>(x-b.minX)*s+20,Y=y=>h-((y-b.minY)*s+20);for(const e of es){ctx.beginPath();if(e.type==='LINE'){ctx.moveTo(X(e.x),Y(e.y));ctx.lineTo(X(e.x2),Y(e.y2));ctx.stroke()}else if(e.type==='CIRCLE'){ctx.arc(X(e.x),Y(e.y),Math.abs(e.r*s),0,Math.PI*2);ctx.stroke()}else if(e.type==='ARC'){ctx.arc(X(e.x),Y(e.y),Math.abs(e.r*s),-(e.a1||0)*Math.PI/180,-(e.a2??360)*Math.PI/180,true);ctx.stroke()}else if(e.type==='LWPOLYLINE'){const xs=e.xs||[],ys=e.ys||[];if(xs.length){ctx.moveTo(X(xs[0]),Y(ys[0]));for(let i=1;i<xs.length;i++)ctx.lineTo(X(xs[i]),Y(ys[i]));if((e.flags&1)===1)ctx.closePath();ctx.stroke()}}else{ctx.font=Math.max(10,12*state.zoom)+'px Segoe UI';ctx.fillText(String(e.text||''),X(e.x),Y(e.y))}}$('zoomInfo').textContent=Math.round(state.zoom*100)+'%'}
+function drawSvg(){const svg=$('paper').querySelector('svg');if(!svg)return;svg.style.width=(svg.viewBox?.baseVal?.width||1000)*state.zoom+'px';svg.style.height=(svg.viewBox?.baseVal?.height||700)*state.zoom+'px';$('paper').style.width=svg.style.width;$('paper').style.height=svg.style.height;$('zoomInfo').textContent=Math.round(state.zoom*100)+'%'}
+function drawCurrent(){if(state.mode==='image')drawImage();else if(state.mode==='dxf')drawDxf();else if(state.mode==='dwg')drawSvg()}
+async function openImage(file){const url=URL.createObjectURL(file),im=new Image();im.onload=()=>{state.mode='image';state.file=file;state.img=im;clearViewer();$('fileInfo').textContent=file.name+' · '+im.naturalWidth+'×'+im.naturalHeight;$('pageCount').textContent='1';$('pageInput').value='1';fitCanvas(im.naturalWidth,im.naturalHeight);status('已打开图片：'+file.name);URL.revokeObjectURL(url)};im.onerror=()=>{URL.revokeObjectURL(url);status('图片解码失败：'+file.name)};im.src=url}
+async function openDxf(file){const text=await file.text();if(!/\bSECTION\b|\bENTITIES\b/i.test(text)){status('DXF 不是 ASCII 文本格式；当前基础解析器不读取二进制 DXF');return}const entities=parseDxf(text);state.mode='dxf';state.file=file;state.dxf={entities,bounds:dxfBounds(entities)};state.img=null;clearViewer();$('fileInfo').textContent=file.name+' · DXF · '+entities.length+' 个实体';$('pageCount').textContent='1';$('pageInput').value='1';state.zoom=1;drawDxf();status('已打开 DXF：'+file.name+'（LINE/CIRCLE/ARC/LWPOLYLINE/TEXT）')}
+async function openDwg(file){
+  clearViewer();state.mode='dwg';state.file=file;$('fileInfo').textContent=file.name+' · DWG';$('pageCount').textContent='1';$('pageInput').value='1';status('正在解析 DWG…');
+  try{
+    const mod=await import('./vendor/libredwg/dist/index.js');
+    const LibreDwg=mod.LibreDwg||mod.default?.LibreDwg;if(!LibreDwg)throw new Error('LibreDwg 导出接口不存在');
+    const base=new URL('./vendor/libredwg/wasm/',document.baseURI).href;const lib=await LibreDwg.create(base);const data=await lib.dwg_read_data(await file.arrayBuffer(),mod.Dwg_File_Type?.DWG||0);const db=lib.convert(data);const svgText=lib.dwg_to_svg(db);const doc=new DOMParser().parseFromString(svgText,'image/svg+xml');const svg=doc.documentElement;if(svg.nodeName.toLowerCase()!=='svg')throw new Error('DWG 未生成 SVG');
+    const p=$('paper');p.innerHTML='';p.appendChild(document.importNode(svg,true));$('overlay').remove?.();state.svg=svg;state.zoom=1;drawSvg();$('empty').classList.add('hidden');status('DWG 打开成功：已转换为可缩放矢量视图');if(lib.dwg_free)lib.dwg_free(data);
+  }catch(e){console.error(e);$('empty').classList.remove('hidden');$('empty').innerHTML='<strong>DWG 打开失败</strong><div style="margin-top:10px">'+String(e.message||e)+'</div><div style="margin-top:8px">请确认发布包包含 vendor/libredwg/dist/index.js 和 vendor/libredwg/wasm/*。</div>';status('DWG 解析失败：'+(e.message||e))}
+}
+function openAny(file){if(!file)return;const e=ext(file);if(file.type.startsWith('image/')||imageTypes.has(file.type)||['png','jpg','jpeg','webp','bmp','gif','svg'].includes(e))return openImage(file);if(e==='dxf')return openDxf(file);if(e==='dwg')return openDwg(file);if(e==='pdf')return window.openPdf(file);status('暂不支持的文件格式：'+e)}
+function install(){const input=$('file'),btn=$('openBtn');if(!input||!btn)return;input.accept='.pdf,.dxf,.dwg,image/*';btn.onclick=()=>input.click();input.onchange=()=>{const f=input.files?.[0];input.value='';openAny(f)};for(const id of ['zoomIn','zoomOut','zoomFit'])$(id).addEventListener('click',()=>{if(state.mode==='image'||state.mode==='dxf'||state.mode==='dwg'){if(id==='zoomIn')state.zoom=Math.min(8,state.zoom*1.2);else if(id==='zoomOut')state.zoom=Math.max(.1,state.zoom/1.2);else state.zoom=1;drawCurrent()}});for(const id of ['prev','next'])$(id).addEventListener('click',()=>{if(state.mode!=='pdf')status('当前文件为单页图纸')});window.openAnyFile=openAny}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install);else install();
 })();
