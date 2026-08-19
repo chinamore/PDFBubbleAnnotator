@@ -6,23 +6,29 @@ from PyQt6.QtWidgets import QApplication, QFileDialog, QInputDialog, QLineEdit, 
 from PyQt6.QtWebChannel import QWebChannel
 from PyQt6.QtWebEngineCore import QWebEnginePage, QWebEngineProfile, QWebEngineSettings
 from PyQt6.QtWebEngineWidgets import QWebEngineView
-APP_PASSWORD="www.175.es"; APP_NAME="PDF for Hu-Nan Zhu -Power By www.175.es"
+APP_PASSWORD="www.175.es"
+APP_NAME="PDF for Hu-Nan Zhu -Power By www.175.es"
+
 def resource_path(relative):
     base=Path(sys._MEIPASS) if getattr(sys,"frozen",False) else Path(__file__).resolve().parent
     return str(base/relative)
+
 def verify_password():
     text,ok=QInputDialog.getText(None,"安全身份验证","请输入软件使用授权密码：",QLineEdit.EchoMode.Password)
     if ok and text==APP_PASSWORD:return True
     if ok:QMessageBox.critical(None,"错误","授权密码错误，软件拒绝访问！")
     return False
+
 class NativeBridge(QObject):
     def __init__(self,window):super().__init__();self.window=window
     @pyqtSlot()
     def selectPdfFile(self):
-        start=self.window.current_dir or str(Path.home());path,_=QFileDialog.getOpenFileName(self.window,"选择图纸文件",start,"CAD/PDF/Image Files (*.pdf *.dxf *.dwg *.png *.jpg *.jpeg *.webp *.bmp *.svg)")
+        start=self.window.current_dir or str(Path.home())
+        path,_=QFileDialog.getOpenFileName(self.window,"选择图纸文件",start,"CAD/PDF/Image Files (*.pdf *.dxf *.dwg *.png *.jpg *.jpeg *.webp *.bmp *.svg)")
         if not path:return
         self.window.current_file_path=path;self.window.current_dir=str(Path(path).parent)
-        encoded=base64.b64encode(Path(path).read_bytes()).decode("ascii");name=Path(path).name.replace("\\","\\\\").replace("'","\\'")
+        encoded=base64.b64encode(Path(path).read_bytes()).decode("ascii")
+        name=Path(path).name.replace("\\","\\\\").replace("'","\\'")
         self.window.page.runJavaScript(f"window.onNativePdfLoaded('{encoded}','{name}');")
     @pyqtSlot(str,str)
     def printPdf(self,base64Data,fileName):
@@ -34,7 +40,8 @@ class NativeBridge(QObject):
             else:QDesktopServices.openUrl(QUrl.fromLocalFile(str(path)))
             self.window.page.runJavaScript("window.onNativePrintStarted&&window.onNativePrintStarted();")
         except Exception as e:
-            msg=str(e).replace("\\","\\\\").replace("'","\\'");self.window.page.runJavaScript(f"window.onNativePrintError&&window.onNativePrintError('{msg}');")
+            msg=str(e).replace("\\","\\\\").replace("'","\\'")
+            self.window.page.runJavaScript(f"window.onNativePrintError&&window.onNativePrintError('{msg}');")
     @pyqtSlot(str)
     def openFolder(self,path):
         try:
@@ -44,24 +51,35 @@ class NativeBridge(QObject):
         except Exception:pass
     @pyqtSlot()
     def openCurrentFolder(self):self.openFolder(self.window.current_dir)
+
 class PDFBalloonApp(QMainWindow):
     def __init__(self):
         super().__init__();self.setWindowTitle(APP_NAME);self.resize(1400,900);self.current_file_path="";self.current_dir=""
         icon=resource_path("app.ico")
         if os.path.exists(icon):self.setWindowIcon(QIcon(icon))
-        self.profile=QWebEngineProfile(self);self.profile.setHttpCacheType(QWebEngineProfile.HttpCacheType.NoCache);self.profile.setPersistentCookiesPolicy(QWebEngineProfile.PersistentCookiesPolicy.NoPersistentCookies);self.profile.clearHttpCache();self.profile.clearAllVisitedLinks()
-        self.page=QWebEnginePage(self.profile,self);self.browser=QWebEngineView(self);self.browser.setPage(self.page);settings=self.browser.settings();settings.setAttribute(QWebEngineSettings.WebAttribute.LocalContentCanAccessFileUrls,True);settings.setAttribute(QWebEngineSettings.WebAttribute.LocalContentCanAccessRemoteUrls,False);settings.setAttribute(QWebEngineSettings.WebAttribute.LocalStorageEnabled,False)
-        self.channel=QWebChannel(self.page);self.bridge=NativeBridge(self);self.channel.registerObject("nativeBridge",self.bridge);self.page.setWebChannel(self.channel);self.profile.downloadRequested.connect(self._on_download_requested);self.page.loadFinished.connect(self._inject_runtime_fix)
+        self.profile=QWebEngineProfile(self)
+        self.profile.setHttpCacheType(QWebEngineProfile.HttpCacheType.NoCache)
+        self.profile.setPersistentCookiesPolicy(QWebEngineProfile.PersistentCookiesPolicy.NoPersistentCookies)
+        self.profile.clearHttpCache();self.profile.clearAllVisitedLinks()
+        self.page=QWebEnginePage(self.profile,self);self.browser=QWebEngineView(self);self.browser.setPage(self.page)
+        settings=self.browser.settings();settings.setAttribute(QWebEngineSettings.WebAttribute.LocalContentCanAccessFileUrls,True);settings.setAttribute(QWebEngineSettings.WebAttribute.LocalContentCanAccessRemoteUrls,False);settings.setAttribute(QWebEngineSettings.WebAttribute.LocalStorageEnabled,False)
+        self.channel=QWebChannel(self.page);self.bridge=NativeBridge(self);self.channel.registerObject("nativeBridge",self.bridge);self.page.setWebChannel(self.channel)
+        self.profile.downloadRequested.connect(self._on_download_requested)
+        self.page.loadFinished.connect(self._inject_stable_runtime)
         index=Path(resource_path("web/index.html")).resolve()
         if not index.exists():QMessageBox.critical(self,"启动失败",f"找不到界面文件：{index}");raise RuntimeError("web/index.html missing")
         self.browser.setUrl(QUrl.fromLocalFile(str(index)));self.setCentralWidget(self.browser)
-    def _inject_runtime_fix(self,ok):
+    def _inject_stable_runtime(self,ok):
         if not ok:return
         try:
-            for filename in ("runtime_fix.js","feature_suite.js","measurement_suite.js","annotation_suite.js","local_zoom.js","cad_export.js","drawing_suite.js","3d_cad_suite.js","3d_advanced.js","sketcher_restore.js","freecad_shell.js","freecad_sketcher_workbench.js","freecad_sketcher_bridge.js"):
-                patch=Path(resource_path("web"))/filename
+            web=Path(resource_path("web"))
+            # IMPORTANT: do not inject the old collection of overlapping patches.
+            # The legacy bubble engine stays authoritative. Only the known-good
+            # export fix and isolated Sketcher runtime are loaded here.
+            for filename in ("runtime_fix.js","stable_runtime.js"):
+                patch=web/filename
                 if patch.exists():self.page.runJavaScript(patch.read_text(encoding="utf-8"))
-        except Exception as e:print("runtime fix injection failed:",e)
+        except Exception as e:print("stable runtime injection failed:",e)
     def _on_download_requested(self,download):
         suggested=os.path.basename(download.suggestedFileName() or "export.bin");save_dir=self.current_dir if self.current_dir and os.path.isdir(self.current_dir) else str(Path.home()/"Downloads")
         if not os.path.isdir(save_dir):save_dir=str(Path.home())
@@ -77,6 +95,7 @@ class PDFBalloonApp(QMainWindow):
         try:self.profile.clearHttpCache();self.profile.clearAllVisitedLinks()
         except Exception:pass
         super().closeEvent(event)
+
 def main():
     app=QApplication(sys.argv);app.setApplicationName(APP_NAME);app.setOrganizationName("PDFBubbleAnnotator");icon=resource_path("app.ico")
     if os.path.exists(icon):app.setWindowIcon(QIcon(icon))
