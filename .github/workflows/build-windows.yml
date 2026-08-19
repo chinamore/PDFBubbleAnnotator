@@ -111,6 +111,12 @@ This notice is included with the packaged runtime. Review GPL-3.0 obligations be
           node --check web\freecad_shell.js
           node --check web\freecad_sketcher_workbench.js
           node --check web\freecad_sketcher_bridge.js
+          $html = Get-Content 'web\index.html' -Raw
+          foreach ($needle in @('id="bubbleTools"','data-tool="bubble"','id="seq"','id="size"','id="border"','id="font"','id="outer"','id="inner"','id="fontColor"','id="showBubble"','id="navSketcher"','src="./sketcher.js"')) {
+            if ($html.IndexOf($needle) -lt 0) { throw "Regression gate failed: missing legacy/UI element $needle" }
+          }
+          if ($html -notmatch 'PBABSketcher\.open\(\)') { throw 'Regression gate failed: Sketcher open hook missing' }
+          if ($html -notmatch 'tool===\'bubble\'') { throw 'Regression gate failed: bubble creation path missing' }
       - name: Build single EXE
         shell: pwsh
         run: |
